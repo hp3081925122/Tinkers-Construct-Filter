@@ -1,10 +1,10 @@
 package org.hp.tinkers_construct_filter.client.screen.overlay;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import org.hp.tinkers_construct_filter.client.catalog.CatalogEntry;
+import org.hp.tinkers_construct_filter.client.screen.LegacyGuiGraphics;
 
 import java.util.List;
 
@@ -40,7 +40,7 @@ public final class CatalogOverlayContent {
     }
 
     /** 绘制内容并返回当前鼠标悬停的物品和词条。 */
-    public HoverResult render(CatalogOverlayRenderer renderer, GuiGraphics graphics, Font font,
+    public HoverResult render(CatalogOverlayRenderer renderer, LegacyGuiGraphics graphics, Font font,
                               int x, int top, int bottom, int width, int scroll, int mouseX, int mouseY) {
         int columns = columns(width);
         int currentY = top - scroll;

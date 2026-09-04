@@ -8,6 +8,7 @@ import org.hp.tinkers_construct_filter.client.config.ClientConfig;
 import org.slf4j.Logger;
 
 @Mod(TinkersConstructFilter.MOD_ID)
+@SuppressWarnings("removal")
 public final class TinkersConstructFilter {
     public static final String MOD_ID = "tinkers_construct_filter";
     public static final Logger LOGGER = LogUtils.getLogger();

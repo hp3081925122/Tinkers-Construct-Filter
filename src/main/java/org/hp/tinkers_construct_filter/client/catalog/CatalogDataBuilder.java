@@ -18,7 +18,7 @@ import slimeknights.tconstruct.library.materials.stats.MaterialStatsId;
 import slimeknights.tconstruct.library.modifiers.Modifier;
 import slimeknights.tconstruct.library.modifiers.ModifierEntry;
 import slimeknights.tconstruct.library.modifiers.ModifierManager;
-import slimeknights.tconstruct.library.recipe.material.MaterialRecipeCache;
+import slimeknights.tconstruct.library.recipe.material.MaterialRecipe;
 import slimeknights.tconstruct.library.recipe.modifiers.adding.IDisplayModifierRecipe;
 import slimeknights.tconstruct.library.tools.SlotType;
 import slimeknights.tconstruct.library.tools.definition.ToolDefinition;
@@ -367,11 +367,21 @@ public final class CatalogDataBuilder {
 
     private static ItemStack materialDisplay(MaterialVariant variant) {
         try {
-            return MaterialRecipeCache.getItems(variant.getVariant()).stream()
-                .filter(stack -> !stack.isEmpty())
-                .findFirst()
-                .map(ItemStack::copy)
-                .orElse(ItemStack.EMPTY);
+            Minecraft minecraft = Minecraft.getInstance();
+            if (minecraft.level == null) {
+                return ItemStack.EMPTY;
+            }
+            for (Recipe<?> recipe : minecraft.level.getRecipeManager().getRecipes()) {
+                if (recipe instanceof MaterialRecipe materialRecipe
+                    && materialRecipe.getMaterial().matchesVariant(variant.getVariant())) {
+                    return materialRecipe.getDisplayItems().stream()
+                        .filter(stack -> !stack.isEmpty())
+                        .findFirst()
+                        .map(ItemStack::copy)
+                        .orElse(ItemStack.EMPTY);
+                }
+            }
+            return ItemStack.EMPTY;
         } catch (RuntimeException exception) {
             return ItemStack.EMPTY;
         }

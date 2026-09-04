@@ -12,6 +12,7 @@
   "search.tinkers_construct_filter.hint": "搜索名称、ID、词条或词条描述",
   "screen.tinkers_construct_filter.loading": "正在等待匠魂材料数据同步……",
   "screen.tinkers_construct_filter.history": "搜索历史",
+  "screen.tinkers_construct_filter.delete_history": "×",
   "screen.tinkers_construct_filter.clear": "清空",
   "screen.tinkers_construct_filter.select_all": "全选",
   "screen.tinkers_construct_filter.no_material_filters": "当前分类没有可用筛选项。",

@@ -1,15 +1,15 @@
 package org.hp.tinkers_construct_filter.client.screen.overlay;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.item.ItemStack;
+import org.hp.tinkers_construct_filter.client.screen.LegacyGuiGraphics;
 
 /** 统一绘制图鉴弹层的外框、裁剪区域、滚动条和物品槽。 */
 public final class CatalogOverlayRenderer {
     private static final int POPUP_Z = 200;
 
     /** 绘制带滚动内容的标准信息弹层，并统一处理层级、裁剪和滚动条。 */
-    public CatalogOverlayContent.HoverResult renderContentPanel(GuiGraphics graphics, int x, int y, int width, int height,
+    public CatalogOverlayContent.HoverResult renderContentPanel(LegacyGuiGraphics graphics, int x, int y, int width, int height,
                                                                 int contentTop, int contentBottom, int scroll, int contentHeight,
                                                                 int viewportHeight, int mouseX, int mouseY, Font font,
                                                                 CatalogOverlayContent content) {
@@ -25,7 +25,7 @@ public final class CatalogOverlayRenderer {
     }
 
     /** 绘制普通选择弹层的统一外框。 */
-    public void renderPanelFrame(GuiGraphics graphics, int x, int y, int width, int height,
+    public void renderPanelFrame(LegacyGuiGraphics graphics, int x, int y, int width, int height,
                                  int borderColor, int fillColor, int outlineColor) {
         graphics.fill(x - 1, y - 1, x + width + 1, y + height + 1, borderColor);
         graphics.fill(x, y, x + width, y + height, fillColor);
@@ -35,7 +35,7 @@ public final class CatalogOverlayRenderer {
     }
 
     /** 绘制普通物品槽，并返回鼠标是否悬停在该槽位上。 */
-    public boolean drawItem(GuiGraphics graphics, Font font, ItemStack stack, int itemX, int itemY, int mouseX, int mouseY) {
+    public boolean drawItem(LegacyGuiGraphics graphics, Font font, ItemStack stack, int itemX, int itemY, int mouseX, int mouseY) {
         boolean hovered = mouseX >= itemX - 1 && mouseX < itemX + 17
             && mouseY >= itemY - 1 && mouseY < itemY + 17;
         graphics.fill(itemX - 1, itemY - 1, itemX + 17, itemY + 17, hovered ? 0xFF6A4A72 : 0xFF3A2B40);
@@ -45,7 +45,7 @@ public final class CatalogOverlayRenderer {
     }
 
     /** 绘制统一样式的垂直滚动条。 */
-    public void renderScrollBar(GuiGraphics graphics, int x, int y, int width, int visibleAmount,
+    public void renderScrollBar(LegacyGuiGraphics graphics, int x, int y, int width, int visibleAmount,
                                 int totalAmount, int scroll, int trackHeight) {
         if (totalAmount <= visibleAmount || trackHeight <= 0) {
             return;

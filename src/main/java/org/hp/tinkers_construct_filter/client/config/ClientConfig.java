@@ -20,7 +20,7 @@ public final class ClientConfig {
         SEARCH_HISTORY_VISIBLE_ROWS = builder.comment("搜索历史弹层同时显示的行数。")
             .defineInRange("historyVisibleRows", 5, 1, 50);
         SEARCH_HISTORY = builder.comment("最近使用的搜索词。")
-            .defineListAllowEmpty("history", List.of(), value -> value instanceof String);
+            .defineListAllowEmpty(List.of("history"), List::of, value -> value instanceof String);
         builder.pop();
         SPEC = builder.build();
     }
@@ -65,5 +65,19 @@ public final class ClientConfig {
         }
         SEARCH_HISTORY.set(List.copyOf(history));
         SEARCH_HISTORY.save();
+    }
+
+    /** 删除搜索历史中的指定记录，并立即保存客户端配置。 */
+    public static void removeSearch(String value) {
+        String query = value == null ? "" : value.trim();
+        if (query.isEmpty()) {
+            return;
+        }
+
+        List<String> history = new ArrayList<>(getSearchHistory());
+        if (history.remove(query)) {
+            SEARCH_HISTORY.set(List.copyOf(history));
+            SEARCH_HISTORY.save();
+        }
     }
 }

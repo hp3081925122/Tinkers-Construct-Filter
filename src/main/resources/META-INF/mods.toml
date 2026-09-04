@@ -27,13 +27,13 @@ side = "BOTH"
 [[dependencies."${mod_id}"]]
 modId = "tconstruct"
 mandatory = true
-versionRange = "[3.11.2.166,)"
+versionRange = "[3.8.5.58]"
 ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies."${mod_id}"]]
 modId = "kubejs"
 mandatory = false
-versionRange = "[2001.6.5-build.16,)"
+versionRange = "[1902.6.2-build.73,)"
 ordering = "AFTER"
 side = "CLIENT"

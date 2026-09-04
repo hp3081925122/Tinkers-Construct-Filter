@@ -12,6 +12,7 @@
   "search.tinkers_construct_filter.hint": "Search names, IDs, traits, or trait descriptions",
   "screen.tinkers_construct_filter.loading": "Waiting for Tinkers' material data…",
   "screen.tinkers_construct_filter.history": "Search history",
+  "screen.tinkers_construct_filter.delete_history": "×",
   "screen.tinkers_construct_filter.clear": "Clear",
   "screen.tinkers_construct_filter.select_all": "Select all",
   "screen.tinkers_construct_filter.no_material_filters": "No filters are available in this category.",

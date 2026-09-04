@@ -16,9 +16,8 @@ public abstract class TinkerStationScreenMixin {
     @Inject(method = "init", at = @At("TAIL"))
     private void tinkersConstructFilter$addBrowserButton(CallbackInfo callbackInfo) {
         TinkerStationScreen screen = (TinkerStationScreen) (Object) this;
-        ScreenWidgetRegistrar.addRenderableWidget(screen, Button.builder(Component.translatable("button.tinkers_construct_filter.open_catalog"), button ->
-            Minecraft.getInstance().setScreen(new TinkersCatalogScreen(screen)))
-            .bounds(screen.cornerX + screen.realWidth + 4, screen.cornerY - 24, 80, 20)
-            .build());
+        ScreenWidgetRegistrar.addRenderableWidget(screen, new Button(screen.cornerX + screen.realWidth + 4, screen.cornerY - 24, 80, 20,
+            Component.translatable("button.tinkers_construct_filter.open_catalog"), button ->
+                Minecraft.getInstance().setScreen(new TinkersCatalogScreen(screen))));
     }
 }

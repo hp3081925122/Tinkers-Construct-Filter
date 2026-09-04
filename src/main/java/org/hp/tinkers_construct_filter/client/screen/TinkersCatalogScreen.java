@@ -1,10 +1,10 @@
 package org.hp.tinkers_construct_filter.client.screen;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
@@ -44,6 +44,7 @@ public final class TinkersCatalogScreen extends Screen {
     private static final int NAV_WIDTH = 112;
     private static final int ROW_HEIGHT = 38;
     private static final int POPUP_ROW_HEIGHT = 18;
+    private static final int HISTORY_DELETE_WIDTH = 18;
     private static final int POPUP_Z = 200;
     private static final int CATEGORY_BAR_HEIGHT = 20;
     private static final int CATEGORY_GAP = 3;
@@ -147,38 +148,31 @@ public final class TinkersCatalogScreen extends Screen {
     }
 
     private void createWidgets() {
-        materialButton = addRenderableWidget(Button.builder(Component.translatable("button.tinkers_construct_filter.materials"), button -> switchPage(Page.MATERIALS))
-            .bounds(panelX + 8, panelY + 52, NAV_WIDTH - 16, 20)
-            .build());
-        partButton = addRenderableWidget(Button.builder(Component.translatable("button.tinkers_construct_filter.parts"), button -> switchPage(Page.PARTS))
-            .bounds(panelX + 8, panelY + 76, NAV_WIDTH - 16, 20)
-            .build());
-        modifierButton = addRenderableWidget(Button.builder(Component.translatable("button.tinkers_construct_filter.modifiers"), button -> switchPage(Page.MODIFIERS))
-            .bounds(panelX + 8, panelY + 100, NAV_WIDTH - 16, 20)
-            .build());
+        materialButton = addRenderableWidget(new Button(panelX + 8, panelY + 52, NAV_WIDTH - 16, 20,
+            Component.translatable("button.tinkers_construct_filter.materials"), button -> switchPage(Page.MATERIALS)));
+        partButton = addRenderableWidget(new Button(panelX + 8, panelY + 76, NAV_WIDTH - 16, 20,
+            Component.translatable("button.tinkers_construct_filter.parts"), button -> switchPage(Page.PARTS)));
+        modifierButton = addRenderableWidget(new Button(panelX + 8, panelY + 100, NAV_WIDTH - 16, 20,
+            Component.translatable("button.tinkers_construct_filter.modifiers"), button -> switchPage(Page.MODIFIERS)));
 
-        importantButton = addRenderableWidget(Button.builder(Component.translatable("button.tinkers_construct_filter.important_options"), button -> toggleImportantPopup())
-            .bounds(contentX, panelY + 4, Math.min(IMPORTANT_BUTTON_WIDTH, contentWidth), 20)
-            .build());
+        importantButton = addRenderableWidget(new Button(contentX, panelY + 4, Math.min(IMPORTANT_BUTTON_WIDTH, contentWidth), 20,
+            Component.translatable("button.tinkers_construct_filter.important_options"), button -> toggleImportantPopup()));
 
         int actionWidth = 54;
         int actionX = contentX + contentWidth - actionWidth * 3 - 8;
         int searchWidth = Math.max(88, actionX - contentX - 4);
         searchBox = addRenderableWidget(new EditBox(font, contentX, contentY, searchWidth, 20, Component.translatable("search.tinkers_construct_filter.hint")));
         searchBox.setMaxLength(120);
-        searchBox.setHint(Component.translatable("search.tinkers_construct_filter.hint"));
+        searchBox.setSuggestion(Component.translatable("search.tinkers_construct_filter.hint").getString());
         searchBox.setValue(searchQuery);
         searchBox.setResponder(this::onSearchChanged);
 
-        filterButton = addRenderableWidget(Button.builder(Component.translatable("button.tinkers_construct_filter.filter"), button -> toggleFilterPopup())
-            .bounds(actionX, contentY, actionWidth, 20)
-            .build());
-        sortButton = addRenderableWidget(Button.builder(Component.translatable("button.tinkers_construct_filter.sort"), button -> toggleSortPopup())
-            .bounds(actionX + actionWidth + 4, contentY, actionWidth, 20)
-            .build());
-        orderButton = addRenderableWidget(Button.builder(Component.empty(), button -> toggleSortOrder())
-            .bounds(actionX + (actionWidth + 4) * 2, contentY, actionWidth, 20)
-            .build());
+        filterButton = addRenderableWidget(new Button(actionX, contentY, actionWidth, 20,
+            Component.translatable("button.tinkers_construct_filter.filter"), button -> toggleFilterPopup()));
+        sortButton = addRenderableWidget(new Button(actionX + actionWidth + 4, contentY, actionWidth, 20,
+            Component.translatable("button.tinkers_construct_filter.sort"), button -> toggleSortPopup()));
+        orderButton = addRenderableWidget(new Button(actionX + (actionWidth + 4) * 2, contentY, actionWidth, 20,
+            Component.empty(), button -> toggleSortOrder()));
         updateNavigationButtons();
         updateOrderButton();
     }
@@ -607,10 +601,11 @@ public final class TinkersCatalogScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+    public void render(PoseStack pose, int mouseX, int mouseY, float partialTick) {
+        renderBackground(pose);
+        LegacyGuiGraphics graphics = new LegacyGuiGraphics(pose);
         renderBase(graphics, mouseX, mouseY);
-        super.render(graphics, mouseX, mouseY, partialTick);
+        super.render(pose, mouseX, mouseY, partialTick);
 
         if (!overlayController.isModalOpen()) {
             if (page == Page.MATERIALS && renderMaterialImportantOverlay(graphics, mouseX, mouseY)) {
@@ -638,7 +633,7 @@ public final class TinkersCatalogScreen extends Screen {
         }
     }
 
-    private void renderBase(GuiGraphics graphics, int mouseX, int mouseY) {
+    private void renderBase(LegacyGuiGraphics graphics, int mouseX, int mouseY) {
         graphics.fill(0, 0, width, height, 0x70000000);
         graphics.fill(panelX - 1, panelY - 1, panelX + panelWidth + 1, panelY + panelHeight + 1, 0xFF111111);
         graphics.fill(panelX, panelY, panelX + panelWidth, panelY + panelHeight, 0xFF2B2B2B);
@@ -664,7 +659,7 @@ public final class TinkersCatalogScreen extends Screen {
         renderEntries(graphics, mouseX, mouseY);
     }
 
-    private void renderEntries(GuiGraphics graphics, int mouseX, int mouseY) {
+    private void renderEntries(LegacyGuiGraphics graphics, int mouseX, int mouseY) {
         if (visibleEntries.isEmpty()) {
             return;
         }
@@ -694,7 +689,7 @@ public final class TinkersCatalogScreen extends Screen {
         renderScrollBar(graphics, visibleEntries.size(), rows);
     }
 
-    private void renderEntryIcon(GuiGraphics graphics, CatalogEntry entry, int x, int y) {
+    private void renderEntryIcon(LegacyGuiGraphics graphics, CatalogEntry entry, int x, int y) {
         ItemStack stack = entry.getDisplayStack();
         if (!stack.isEmpty()) {
             graphics.renderItem(stack, x, y);
@@ -725,7 +720,7 @@ public final class TinkersCatalogScreen extends Screen {
         return 3;
     }
 
-    private void renderScrollBar(GuiGraphics graphics, int total, int rows) {
+    private void renderScrollBar(LegacyGuiGraphics graphics, int total, int rows) {
         if (total <= rows) {
             return;
         }
@@ -738,7 +733,7 @@ public final class TinkersCatalogScreen extends Screen {
         graphics.fill(contentX + contentWidth - 5, y, contentX + contentWidth - 3, y + thumb, 0xFFB0B0B0);
     }
 
-    private void renderHistory(GuiGraphics graphics, int mouseX, int mouseY) {
+    private void renderHistory(LegacyGuiGraphics graphics, int mouseX, int mouseY) {
         List<String> history = ClientConfig.getSearchHistory();
         int rows = historyRows();
         int x = historyX();
@@ -755,11 +750,17 @@ public final class TinkersCatalogScreen extends Screen {
             boolean hovered = isWithin(mouseX, mouseY, x, rowY, width, POPUP_ROW_HEIGHT);
             graphics.fill(x + 1, rowY, x + width - 1, rowY + POPUP_ROW_HEIGHT, hovered ? 0xFF505050 : 0xFF383838);
             String value = index < history.size() ? history.get(index) : "";
-            graphics.drawString(font, clip(value, width - 10), x + 5, rowY + 5, value.isEmpty() ? 0xFF777777 : 0xFFE5E5E5, false);
+            graphics.drawString(font, clip(value, width - HISTORY_DELETE_WIDTH - 10), x + 5, rowY + 5, value.isEmpty() ? 0xFF777777 : 0xFFE5E5E5, false);
+            if (!value.isEmpty()) {
+                boolean deleteHovered = isHistoryDeleteHovered(mouseX, mouseY, x, rowY, width);
+                String deleteText = Component.translatable("screen.tinkers_construct_filter.delete_history").getString();
+                int deleteColor = deleteHovered ? 0xFFFF8080 : 0xFFE06060;
+                graphics.drawString(font, deleteText, x + width - HISTORY_DELETE_WIDTH + 2, rowY + 5, deleteColor, false);
+            }
         }
     }
 
-    private void renderImportantPopup(GuiGraphics graphics, int mouseX, int mouseY) {
+    private void renderImportantPopup(LegacyGuiGraphics graphics, int mouseX, int mouseY) {
         List<ImportantPartOption> options = importantPartOptions();
         syncImportantSelection();
         int rows = importantRows(options.size());
@@ -796,7 +797,7 @@ public final class TinkersCatalogScreen extends Screen {
         overlayRenderer.renderScrollBar(graphics, x, y + 18, width, rows, options.size(), overlayController.scroll(), height - 19);
     }
 
-    private void renderFilterPopup(GuiGraphics graphics, int mouseX, int mouseY) {
+    private void renderFilterPopup(LegacyGuiGraphics graphics, int mouseX, int mouseY) {
         List<FilterCategory> categories = filterCategories();
         FilterCategory activeCategory = activeFilterCategory(categories);
         List<FilterOption> options = activeCategory == null ? List.of() : activeCategory.options();
@@ -827,7 +828,7 @@ public final class TinkersCatalogScreen extends Screen {
         }
     }
 
-    private void renderFilterCategoryBar(GuiGraphics graphics, List<FilterCategory> categories, FilterCategory activeCategory, int mouseX, int mouseY) {
+    private void renderFilterCategoryBar(LegacyGuiGraphics graphics, List<FilterCategory> categories, FilterCategory activeCategory, int mouseX, int mouseY) {
         int x = filterCategoryAreaX();
         int y = popupY() + 2;
         int width = filterCategoryAreaWidth();
@@ -849,7 +850,7 @@ public final class TinkersCatalogScreen extends Screen {
         graphics.drawString(font, Component.translatable("screen.tinkers_construct_filter.clear"), clearFilterX() + 4, popupY() + 6, 0xFFFFD86B, false);
     }
 
-    private void renderSortPopup(GuiGraphics graphics, int mouseX, int mouseY) {
+    private void renderSortPopup(LegacyGuiGraphics graphics, int mouseX, int mouseY) {
         List<SortCategory> categories = sortCategories();
         SortCategory activeCategory = activeSortCategory(categories);
         List<SortOption> options = activeCategory == null ? List.of() : activeCategory.options();
@@ -880,7 +881,7 @@ public final class TinkersCatalogScreen extends Screen {
         }
     }
 
-    private void renderSortCategoryBar(GuiGraphics graphics, List<SortCategory> categories, SortCategory activeCategory, int mouseX, int mouseY) {
+    private void renderSortCategoryBar(LegacyGuiGraphics graphics, List<SortCategory> categories, SortCategory activeCategory, int mouseX, int mouseY) {
         int x = sortCategoryAreaX();
         int y = popupY() + 2;
         int width = sortCategoryAreaWidth();
@@ -901,18 +902,18 @@ public final class TinkersCatalogScreen extends Screen {
         graphics.disableScissor();
     }
 
-    private void renderEntryTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+    private void renderEntryTooltip(LegacyGuiGraphics graphics, int mouseX, int mouseY) {
         CatalogEntry entry = entryAt(mouseX, mouseY);
         if (entry == null) {
             return;
         }
         ItemStack stack = entry.getDisplayStack();
         if (!stack.isEmpty()) {
-            graphics.renderTooltip(font, reorderTraitTooltip(entry, stack), stack.getTooltipImage(), stack, mouseX, mouseY);
+            renderTooltip(graphics.pose(), reorderTraitTooltip(entry, stack), stack.getTooltipImage(), mouseX, mouseY, font, stack);
         }
     }
 
-    private boolean renderMaterialImportantOverlay(GuiGraphics graphics, int mouseX, int mouseY) {
+    private boolean renderMaterialImportantOverlay(LegacyGuiGraphics graphics, int mouseX, int mouseY) {
         hoveredMaterialTrait = null;
         if (!snapshot.fullyLoaded() || page != Page.MATERIALS || selectedImportantPartTypes.isEmpty()) {
             clearInfoOverlay();
@@ -967,7 +968,7 @@ public final class TinkersCatalogScreen extends Screen {
         return true;
     }
 
-    private void renderMaterialTraitTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+    private void renderMaterialTraitTooltip(LegacyGuiGraphics graphics, int mouseX, int mouseY) {
         if (hoveredMaterialTrait == null) {
             return;
         }
@@ -978,7 +979,7 @@ public final class TinkersCatalogScreen extends Screen {
         }
         graphics.pose().pushPose();
         graphics.pose().translate(0.0F, 0.0F, POPUP_Z + 1);
-        graphics.renderTooltip(font, lines, mouseX, mouseY);
+        renderTooltip(graphics.pose(), lines, mouseX, mouseY);
         graphics.pose().popPose();
     }
 
@@ -1072,7 +1073,7 @@ public final class TinkersCatalogScreen extends Screen {
         return title;
     }
 
-    private boolean renderModifierRecipeOverlay(GuiGraphics graphics, int mouseX, int mouseY) {
+    private boolean renderModifierRecipeOverlay(LegacyGuiGraphics graphics, int mouseX, int mouseY) {
         hoveredRecipeItem = ItemStack.EMPTY;
         if (!isOverRecipeOverlay(mouseX, mouseY)) {
             CatalogEntry rowEntry = entryAtRow(mouseX, mouseY);
@@ -1169,10 +1170,10 @@ public final class TinkersCatalogScreen extends Screen {
         return recipeOverlayRecipes.get(index).inputSlots();
     }
 
-    private void renderItemTooltip(GuiGraphics graphics, ItemStack stack, int mouseX, int mouseY) {
+    private void renderItemTooltip(LegacyGuiGraphics graphics, ItemStack stack, int mouseX, int mouseY) {
         Minecraft minecraft = Minecraft.getInstance();
         TooltipFlag flag = minecraft.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL;
-        graphics.renderTooltip(font, stack.getTooltipLines(minecraft.player, flag), stack.getTooltipImage(), stack, mouseX, mouseY);
+        renderTooltip(graphics.pose(), stack.getTooltipLines(minecraft.player, flag), stack.getTooltipImage(), mouseX, mouseY, font, stack);
     }
 
     private List<Component> reorderTraitTooltip(CatalogEntry entry, ItemStack stack) {
@@ -1274,7 +1275,7 @@ public final class TinkersCatalogScreen extends Screen {
         if (overlayController.isModalOpen()) {
             if (overlayController.type() == CatalogOverlayController.Type.IMPORTANT
                 && importantButton != null
-                && isWithin(mouseX, mouseY, importantButton.getX(), importantButton.getY(), importantButton.getWidth(), importantButton.getHeight())) {
+                && isWithin(mouseX, mouseY, importantButton.x, importantButton.y, importantButton.getWidth(), importantButton.getHeight())) {
                 toggleImportantPopup();
                 return true;
             }
@@ -1326,7 +1327,7 @@ public final class TinkersCatalogScreen extends Screen {
         overlayController.clear();
         hoveredRecipeItem = ItemStack.EMPTY;
         hoveredMaterialTrait = null;
-        if (searchBox != null && isWithin(mouseX, mouseY, searchBox.getX(), searchBox.getY(), searchBox.getWidth(), searchBox.getHeight())) {
+        if (searchBox != null && isWithin(mouseX, mouseY, searchBox.x, searchBox.y, searchBox.getWidth(), searchBox.getHeight())) {
             clearInfoOverlay();
             overlayController.open(CatalogOverlayController.Type.HISTORY);
         }
@@ -1341,10 +1342,21 @@ public final class TinkersCatalogScreen extends Screen {
         List<String> history = ClientConfig.getSearchHistory();
         int index = overlayController.scroll() + row;
         if (index >= 0 && index < history.size()) {
-            searchBox.setValue(history.get(index));
-            ClientConfig.rememberSearch(history.get(index));
+            String value = history.get(index);
+            if (isHistoryDeleteHovered(mouseX, mouseY, historyX(), historyY() + 18 + row * POPUP_ROW_HEIGHT, historyWidth())) {
+                ClientConfig.removeSearch(value);
+                TinkersConstructFilter.LOGGER.debug("Search history entry removed: {}", value);
+                return;
+            }
+            searchBox.setValue(value);
+            ClientConfig.rememberSearch(value);
             overlayController.clear();
         }
+    }
+
+    /** 判断鼠标是否位于搜索历史当前行右侧的删除叉区域。 */
+    private boolean isHistoryDeleteHovered(double mouseX, double mouseY, int x, int rowY, int width) {
+        return isWithin(mouseX, mouseY, x + width - HISTORY_DELETE_WIDTH, rowY, HISTORY_DELETE_WIDTH, POPUP_ROW_HEIGHT);
     }
 
     private void handleImportantClick(double mouseX, double mouseY) {
@@ -1731,11 +1743,11 @@ public final class TinkersCatalogScreen extends Screen {
     }
 
     private int historyX() {
-        return searchBox.getX();
+        return searchBox.x;
     }
 
     private int historyY() {
-        return searchBox.getY() + searchBox.getHeight() + 2;
+        return searchBox.y + searchBox.getHeight() + 2;
     }
 
     private int historyWidth() {
