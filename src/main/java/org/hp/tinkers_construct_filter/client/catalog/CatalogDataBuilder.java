@@ -157,7 +157,7 @@ public final class CatalogDataBuilder {
                         data.toolCategories,
                         descriptions,
                         data.recipeTools,
-                        data.recipeInputs
+                        data.recipeVariants
                     ));
                 } catch (RuntimeException exception) {
                     TinkersConstructFilter.LOGGER.debug("Skipping unavailable modifier", exception);
@@ -190,18 +190,29 @@ public final class CatalogDataBuilder {
                         data.recipeTools.add(tool.copy());
                     }
                 }
-                List<ItemStack> inputs = new ArrayList<>();
+                List<List<ItemStack>> inputSlots = new ArrayList<>();
+                int alternativeSlotCount = 0;
+                boolean hasInput = false;
                 for (int input = 0; input < modifierRecipe.getInputCount(); input++) {
-                    for (ItemStack stack : modifierRecipe.getDisplayItems(input)) {
-                        if (!stack.isEmpty()) {
-                            inputs.add(stack.copy());
-                        }
+                    List<ItemStack> slot = modifierRecipe.getDisplayItems(input).stream()
+                        .filter(stack -> !stack.isEmpty())
+                        .map(ItemStack::copy)
+                        .toList();
+                    if (!slot.isEmpty()) {
+                        hasInput = true;
                     }
+                    if (slot.size() > 1) {
+                        alternativeSlotCount++;
+                    }
+                    inputSlots.add(slot);
                 }
-                if (!inputs.isEmpty()) {
-                    String recipeKey = inputs.toString();
+                if (hasInput) {
+                    String recipeKey = inputSlots.toString();
                     if (data.recipeKeys.add(recipeKey)) {
-                        data.recipeInputs.add(List.copyOf(inputs));
+                        data.recipeVariants.add(new CatalogApi.ModifierRecipeView(inputSlots));
+                        if (alternativeSlotCount > 0) {
+                            TinkersConstructFilter.LOGGER.debug("Collected modifier recipe {} with {} input slots and {} alternative slots", id, inputSlots.size(), alternativeSlotCount);
+                        }
                     }
                 }
             } catch (RuntimeException exception) {
@@ -560,19 +571,19 @@ public final class CatalogDataBuilder {
         private final List<String> descriptions;
 
         private ModifierCatalogEntry(String id, ItemStack displayStack, String name, Set<String> slotCategories, Map<String, String> toolCategories, List<String> descriptions,
-                                     List<ItemStack> recipeTools, List<List<ItemStack>> recipeInputs) {
+                                     List<ItemStack> recipeTools, List<CatalogApi.ModifierRecipeView> recipeVariants) {
             super(id, displayStack, name, 0, List.of(), Map.of());
             this.slotCategories = Collections.unmodifiableMap(titledCategories(slotCategories));
             this.toolCategories = Collections.unmodifiableMap(new LinkedHashMap<>(toolCategories));
             this.descriptions = List.copyOf(descriptions);
             this.recipeTools = recipeTools.stream().map(ItemStack::copy).toList();
-            this.recipeInputs = recipeInputs.stream()
-                .map(inputs -> inputs.stream().map(ItemStack::copy).toList())
+            this.recipeVariants = recipeVariants.stream()
+                .map(recipe -> new CatalogApi.ModifierRecipeView(recipe.inputSlots()))
                 .toList();
         }
 
         private final List<ItemStack> recipeTools;
-        private final List<List<ItemStack>> recipeInputs;
+        private final List<CatalogApi.ModifierRecipeView> recipeVariants;
 
         @Override
         public Map<String, String> getSlotCategories() {
@@ -595,9 +606,9 @@ public final class CatalogDataBuilder {
         }
 
         @Override
-        public List<List<ItemStack>> getRecipeInputs() {
-            return recipeInputs.stream()
-                .map(inputs -> inputs.stream().map(ItemStack::copy).toList())
+        public List<CatalogApi.ModifierRecipeView> getRecipeVariants() {
+            return recipeVariants.stream()
+                .map(recipe -> new CatalogApi.ModifierRecipeView(recipe.inputSlots()))
                 .toList();
         }
 
@@ -625,7 +636,7 @@ public final class CatalogDataBuilder {
         private final Set<String> recipeToolKeys = new HashSet<>();
         private final List<ItemStack> recipeTools = new ArrayList<>();
         private final Set<String> recipeKeys = new HashSet<>();
-        private final List<List<ItemStack>> recipeInputs = new ArrayList<>();
+        private final List<CatalogApi.ModifierRecipeView> recipeVariants = new ArrayList<>();
     }
 
 }

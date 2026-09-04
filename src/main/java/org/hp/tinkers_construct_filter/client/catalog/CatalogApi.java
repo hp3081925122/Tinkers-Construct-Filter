@@ -56,7 +56,22 @@ public final class CatalogApi {
 
         List<ItemStack> getRecipeTools();
 
-        List<List<ItemStack>> getRecipeInputs();
+        List<ModifierRecipeView> getRecipeVariants();
+    }
+
+    public record ModifierRecipeView(List<List<ItemStack>> inputSlots) {
+        public ModifierRecipeView {
+            inputSlots = inputSlots.stream()
+                .map(slot -> slot.stream().map(ItemStack::copy).toList())
+                .toList();
+        }
+
+        @Override
+        public List<List<ItemStack>> inputSlots() {
+            return inputSlots.stream()
+                .map(slot -> slot.stream().map(ItemStack::copy).toList())
+                .toList();
+        }
     }
 
     @FunctionalInterface
