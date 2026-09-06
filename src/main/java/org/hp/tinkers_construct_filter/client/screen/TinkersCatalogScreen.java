@@ -1,7 +1,6 @@
 package org.hp.tinkers_construct_filter.client.screen;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -87,15 +86,15 @@ public final class TinkersCatalogScreen extends Screen {
     private ItemStack materialInfoItem = ItemStack.EMPTY;
     private Page page = Page.MATERIALS;
     private EditBox searchBox;
-    private Button materialButton;
-    private Button partButton;
-    private Button modifierButton;
+    private CatalogButton materialButton;
+    private CatalogButton partButton;
+    private CatalogButton modifierButton;
     // 全词条使用独立入口与页面状态，复用现有列表交互。
-    private Button traitButton;
-    private Button filterButton;
-    private Button sortButton;
-    private Button orderButton;
-    private Button importantButton;
+    private CatalogButton traitButton;
+    private CatalogButton filterButton;
+    private CatalogButton sortButton;
+    private CatalogButton orderButton;
+    private CatalogButton importantButton;
     private String searchQuery = "";
     private boolean catalogInitialized;
     private int mainScroll;
@@ -160,18 +159,18 @@ public final class TinkersCatalogScreen extends Screen {
     }
 
     private void createWidgets() {
-        materialButton = addRenderableWidget(new Button(panelX + 8, panelY + 52, NAV_WIDTH - 16, 20,
+        materialButton = addRenderableWidget(new CatalogButton(panelX + 8, panelY + 52, NAV_WIDTH - 16, 20,
             Component.translatable("button.tinkers_construct_filter.materials"), button -> switchPage(Page.MATERIALS)));
-        partButton = addRenderableWidget(new Button(panelX + 8, panelY + 76, NAV_WIDTH - 16, 20,
+        partButton = addRenderableWidget(new CatalogButton(panelX + 8, panelY + 76, NAV_WIDTH - 16, 20,
             Component.translatable("button.tinkers_construct_filter.parts"), button -> switchPage(Page.PARTS)));
-        modifierButton = addRenderableWidget(new Button(panelX + 8, panelY + 100, NAV_WIDTH - 16, 20,
+        modifierButton = addRenderableWidget(new CatalogButton(panelX + 8, panelY + 100, NAV_WIDTH - 16, 20,
             Component.translatable("button.tinkers_construct_filter.modifiers"), button -> switchPage(Page.MODIFIERS)));
 
         // 第四个同级入口展示包含无强化配方项目的全词条列表。
-        traitButton = addRenderableWidget(new Button(panelX + 8, panelY + 124, NAV_WIDTH - 16, 20,
+        traitButton = addRenderableWidget(new CatalogButton(panelX + 8, panelY + 124, NAV_WIDTH - 16, 20,
             Component.translatable("button.tinkers_construct_filter.traits"), button -> switchPage(Page.TRAITS)));
 
-        importantButton = addRenderableWidget(new Button(contentX, panelY + 4, Math.min(IMPORTANT_BUTTON_WIDTH, contentWidth), 20,
+        importantButton = addRenderableWidget(new CatalogButton(contentX, panelY + 4, Math.min(IMPORTANT_BUTTON_WIDTH, contentWidth), 20,
             Component.translatable("button.tinkers_construct_filter.important_options"), button -> toggleImportantPopup()));
 
         int actionWidth = 54;
@@ -183,11 +182,11 @@ public final class TinkersCatalogScreen extends Screen {
         searchBox.setValue(searchQuery);
         searchBox.setResponder(this::onSearchChanged);
 
-        filterButton = addRenderableWidget(new Button(actionX, contentY, actionWidth, 20,
+        filterButton = addRenderableWidget(new CatalogButton(actionX, contentY, actionWidth, 20,
             Component.translatable("button.tinkers_construct_filter.filter"), button -> toggleFilterPopup()));
-        sortButton = addRenderableWidget(new Button(actionX + actionWidth + 4, contentY, actionWidth, 20,
+        sortButton = addRenderableWidget(new CatalogButton(actionX + actionWidth + 4, contentY, actionWidth, 20,
             Component.translatable("button.tinkers_construct_filter.sort"), button -> toggleSortPopup()));
-        orderButton = addRenderableWidget(new Button(actionX + (actionWidth + 4) * 2, contentY, actionWidth, 20,
+        orderButton = addRenderableWidget(new CatalogButton(actionX + (actionWidth + 4) * 2, contentY, actionWidth, 20,
             Component.empty(), button -> toggleSortOrder()));
         updateNavigationButtons();
         updateOrderButton();
@@ -243,6 +242,11 @@ public final class TinkersCatalogScreen extends Screen {
         partButton.active = page != Page.PARTS;
         modifierButton.active = page != Page.MODIFIERS;
         traitButton.active = page != Page.TRAITS;
+        // 当前页保持原有禁用点击行为，但使用铜色选中材质而非灰色禁用外观。
+        materialButton.setSelected(page == Page.MATERIALS);
+        partButton.setSelected(page == Page.PARTS);
+        modifierButton.setSelected(page == Page.MODIFIERS);
+        traitButton.setSelected(page == Page.TRAITS);
         importantButton.visible = page == Page.MATERIALS || page == Page.TRAITS;
         importantButton.active = page == Page.MATERIALS || page == Page.TRAITS;
     }
@@ -666,7 +670,14 @@ public final class TinkersCatalogScreen extends Screen {
         renderBackground(pose);
         LegacyGuiGraphics graphics = new LegacyGuiGraphics(pose);
         renderBase(graphics, mouseX, mouseY);
+        // 展开的操作弹层显示选中状态，交互与覆盖区域仍由原控制器负责。
+        filterButton.setSelected(overlayController.isOpen(CatalogOverlayController.Type.FILTER));
+        sortButton.setSelected(overlayController.isOpen(CatalogOverlayController.Type.SORT));
+        importantButton.setSelected(overlayController.isOpen(CatalogOverlayController.Type.IMPORTANT));
         super.render(pose, mouseX, mouseY, partialTick);
+        // 仅替换搜索框外沿，不移动文本、光标和原有点击范围。
+        CatalogSkin.frame(graphics, searchBox.isFocused() ? CatalogSkin.INPUT_FOCUSED : CatalogSkin.INPUT,
+            contentX - 1, contentY - 1, searchBox.getWidth() + 2, searchBox.getHeight() + 2);
 
         if (!overlayController.isModalOpen()) {
             if ((page == Page.MATERIALS || page == Page.PARTS) && renderMaterialImportantOverlay(graphics, mouseX, mouseY)) {
@@ -701,10 +712,10 @@ public final class TinkersCatalogScreen extends Screen {
 
     private void renderBase(LegacyGuiGraphics graphics, int mouseX, int mouseY) {
         graphics.fill(0, 0, width, height, 0x70000000);
-        graphics.fill(panelX - 1, panelY - 1, panelX + panelWidth + 1, panelY + panelHeight + 1, 0xFF111111);
-        graphics.fill(panelX, panelY, panelX + panelWidth, panelY + panelHeight, 0xFF2B2B2B);
-        graphics.fill(panelX + 2, panelY + 2, panelX + NAV_WIDTH, panelY + panelHeight - 2, 0xFF202020);
-        graphics.fill(panelX + NAV_WIDTH + 4, panelY + 2, panelX + panelWidth - 2, panelY + 25, 0xFF3D3D3D);
+        // 主框、侧栏与工具栏使用同一图集，九宫格边框不随窗口比例变形。
+        CatalogSkin.draw(graphics, CatalogSkin.WINDOW, panelX - 1, panelY - 1, panelWidth + 2, panelHeight + 2);
+        CatalogSkin.draw(graphics, CatalogSkin.SIDEBAR, panelX + 2, panelY + 2, NAV_WIDTH - 2, panelHeight - 4);
+        CatalogSkin.draw(graphics, CatalogSkin.HEADER, panelX + NAV_WIDTH + 4, panelY + 2, panelWidth - NAV_WIDTH - 6, 23);
         graphics.drawCenteredString(font, title, panelX + NAV_WIDTH / 2, panelY + 10, 0xFFFFFFFF);
 
         int navSelectionY = switch (page) {
@@ -713,9 +724,9 @@ public final class TinkersCatalogScreen extends Screen {
             case MODIFIERS -> panelY + 98;
             case TRAITS -> panelY + 122;
         };
-        graphics.fill(panelX + 5, navSelectionY, panelX + NAV_WIDTH - 5, navSelectionY + 24, 0xFF4B4B4B);
-        graphics.fill(contentX, listY - 3, contentX + contentWidth, listBottom + 1, 0xFF171717);
-        graphics.fill(contentX + 1, listY - 2, contentX + contentWidth - 1, listBottom, 0xFF303030);
+        // 铜色定位条辅助区分当前页，列表背景保持低亮度。
+        graphics.fill(panelX + 4, navSelectionY + 3, panelX + 6, navSelectionY + 21, CatalogSkin.ACCENT);
+        CatalogSkin.draw(graphics, CatalogSkin.SIDEBAR, contentX, listY - 3, contentWidth, listBottom - listY + 4);
 
         if (!snapshot.fullyLoaded()) {
             graphics.drawCenteredString(font, Component.translatable("screen.tinkers_construct_filter.loading"), contentX + contentWidth / 2, listY + 18, 0xFFE0E0E0);
@@ -739,7 +750,8 @@ public final class TinkersCatalogScreen extends Screen {
             int rowY = listY + (index - mainScroll) * ROW_HEIGHT;
             CatalogEntry entry = visibleEntries.get(index);
             boolean hovered = !mouseOverPopup && isWithin(mouseX, mouseY, contentX + 2, rowY, contentWidth - 4, ROW_HEIGHT - 1);
-            graphics.fill(contentX + 2, rowY, contentX + contentWidth - 2, rowY + ROW_HEIGHT - 1, hovered ? 0xFF4A4A4A : 0xFF383838);
+            CatalogSkin.draw(graphics, hovered ? CatalogSkin.ROW_HOVER : CatalogSkin.ROW,
+                contentX + 2, rowY, contentWidth - 4, ROW_HEIGHT - 1);
             renderEntryIcon(graphics, entry, contentX + 6, rowY + 10);
 
             String sortText = sortValueText(entry, sort);
@@ -747,7 +759,7 @@ public final class TinkersCatalogScreen extends Screen {
             String name = clip(entry.getName(), contentWidth - 41 - sortWidth - 12);
             graphics.drawString(font, name, contentX + 29, rowY + 6, 0xFFFFFFFF, false);
             if (!sortText.isEmpty()) {
-                graphics.drawString(font, clip(sortText, contentWidth / 3), contentX + contentWidth - 6 - sortWidth, rowY + 6, 0xFFFFD86B, false);
+                graphics.drawString(font, clip(sortText, contentWidth / 3), contentX + contentWidth - 6 - sortWidth, rowY + 6, CatalogSkin.ACCENT, false);
             }
 
             // 材料页不绘制名称下方的词条摘要，词条数据仍用于悬浮详情与搜索。
@@ -804,8 +816,8 @@ public final class TinkersCatalogScreen extends Screen {
         int travel = height - thumb;
         int maximum = Math.max(1, total - rows);
         int y = listY + 1 + travel * mainScroll / maximum;
-        graphics.fill(contentX + contentWidth - 5, listY + 1, contentX + contentWidth - 3, listBottom - 1, 0xFF222222);
-        graphics.fill(contentX + contentWidth - 5, y, contentX + contentWidth - 3, y + thumb, 0xFFB0B0B0);
+        CatalogSkin.draw(graphics, CatalogSkin.SCROLL_TRACK, contentX + contentWidth - 5, listY + 1, 2, listBottom - listY - 2);
+        CatalogSkin.draw(graphics, CatalogSkin.SCROLL_THUMB, contentX + contentWidth - 5, y, 2, thumb);
     }
 
     private void renderHistory(LegacyGuiGraphics graphics, int mouseX, int mouseY) {
@@ -817,13 +829,14 @@ public final class TinkersCatalogScreen extends Screen {
         int height = 18 + rows * POPUP_ROW_HEIGHT;
         overlayController.setBounds(x, y, width, height);
         overlayController.setContentMetrics(history.size(), rows);
-        overlayRenderer.renderPanelFrame(graphics, x, y, width, height, 0xFF0F0F0F, 0xFF252525, 0);
+        overlayRenderer.renderPanelFrame(graphics, x, y, width, height);
         graphics.drawString(font, Component.translatable("screen.tinkers_construct_filter.history"), x + 5, y + 5, 0xFFFFFFFF, false);
         for (int row = 0; row < rows; row++) {
             int rowY = y + 18 + row * POPUP_ROW_HEIGHT;
             int index = overlayController.scroll() + row;
             boolean hovered = isWithin(mouseX, mouseY, x, rowY, width, POPUP_ROW_HEIGHT);
-            graphics.fill(x + 1, rowY, x + width - 1, rowY + POPUP_ROW_HEIGHT, hovered ? 0xFF505050 : 0xFF383838);
+            CatalogSkin.draw(graphics, hovered ? CatalogSkin.ROW_HOVER : CatalogSkin.ROW,
+                x + 1, rowY, width - 2, POPUP_ROW_HEIGHT);
             String value = index < history.size() ? history.get(index) : "";
             graphics.drawString(font, clip(value, width - HISTORY_DELETE_WIDTH - 10), x + 5, rowY + 5, value.isEmpty() ? 0xFF777777 : 0xFFE5E5E5, false);
             if (!value.isEmpty()) {
@@ -845,14 +858,14 @@ public final class TinkersCatalogScreen extends Screen {
         int height = importantPopupHeight(options.size());
         overlayController.setBounds(x, y, width, height);
         overlayController.setContentMetrics(options.size(), rows);
-        overlayRenderer.renderPanelFrame(graphics, x, y, width, height, 0xFF0F0F0F, 0xFF252525, 0);
+        overlayRenderer.renderPanelFrame(graphics, x, y, width, height);
         graphics.drawString(font, Component.translatable(page == Page.TRAITS
             ? "screen.tinkers_construct_filter.trait_sources" : "screen.tinkers_construct_filter.important_options"), x + 5, y + 5, 0xFFFFFFFF, false);
         String selectAll = Component.translatable("screen.tinkers_construct_filter.select_all").getString();
         String clear = Component.translatable("screen.tinkers_construct_filter.clear").getString();
-        graphics.drawString(font, selectAll, importantSelectAllX(), y + 5, 0xFFFFD86B, false);
-        graphics.drawString(font, clear, importantClearX(), y + 5, 0xFFFFD86B, false);
-        graphics.fill(x + 1, y + 17, x + width - 1, y + 18, 0xFF444444);
+        graphics.drawString(font, selectAll, importantSelectAllX(), y + 5, CatalogSkin.ACCENT, false);
+        graphics.drawString(font, clear, importantClearX(), y + 5, CatalogSkin.ACCENT, false);
+        graphics.fill(x + 1, y + 17, x + width - 1, y + 18, 0xFF65513E);
         if (options.isEmpty()) {
             graphics.drawString(font, clip(Component.translatable("screen.tinkers_construct_filter.no_important_options").getString(), width - 10), x + 5, y + 25, 0xFFE0E0E0, false);
             return;
@@ -866,9 +879,10 @@ public final class TinkersCatalogScreen extends Screen {
             ImportantPartOption option = options.get(index);
             boolean selected = importantSelection().contains(option.id());
             boolean hovered = isWithin(mouseX, mouseY, x, rowY, width, POPUP_ROW_HEIGHT);
-            graphics.fill(x + 1, rowY, x + width - 1, rowY + POPUP_ROW_HEIGHT, hovered ? 0xFF505050 : 0xFF383838);
+            CatalogSkin.draw(graphics, hovered ? CatalogSkin.ROW_HOVER : CatalogSkin.ROW,
+                x + 1, rowY, width - 2, POPUP_ROW_HEIGHT);
             graphics.drawString(font, clip((selected ? "[√] " : "[] ") + option.title(), width - 10), x + 5, rowY + 5,
-                selected ? 0xFFFFD86B : 0xFFE0E0E0, false);
+                selected ? CatalogSkin.ACCENT : 0xFFE0E0E0, false);
         }
         overlayRenderer.renderScrollBar(graphics, x, y + 18, width, rows, options.size(), overlayController.scroll(), height - 19);
     }
@@ -884,7 +898,7 @@ public final class TinkersCatalogScreen extends Screen {
         int height = filterPopupHeight();
         overlayController.setBounds(x, y, width, height);
         overlayController.setContentMetrics(options.size(), rows);
-        overlayRenderer.renderPanelFrame(graphics, x, y, width, height, 0xFF0F0F0F, 0xFF252525, 0);
+        overlayRenderer.renderPanelFrame(graphics, x, y, width, height);
         renderFilterCategoryBar(graphics, categories, activeCategory, mouseX, mouseY);
         if (options.isEmpty()) {
             graphics.drawString(font, clip(Component.translatable("screen.tinkers_construct_filter.no_material_filters").getString(), width - 10), x + 5, filterOptionsY() + 7, 0xFFE0E0E0, false);
@@ -899,8 +913,9 @@ public final class TinkersCatalogScreen extends Screen {
             FilterOption option = options.get(index);
             boolean selected = selectedFilters.get(page).contains(option.id());
             boolean hovered = isWithin(mouseX, mouseY, x, rowY, width, POPUP_ROW_HEIGHT);
-            graphics.fill(x + 1, rowY, x + width - 1, rowY + POPUP_ROW_HEIGHT, hovered ? 0xFF505050 : 0xFF383838);
-            graphics.drawString(font, clip((selected ? "[√] " : "[] ") + option.title(), width - 10), x + 5, rowY + 5, selected ? 0xFFFFD86B : 0xFFE0E0E0, false);
+            CatalogSkin.draw(graphics, hovered ? CatalogSkin.ROW_HOVER : CatalogSkin.ROW,
+                x + 1, rowY, width - 2, POPUP_ROW_HEIGHT);
+            graphics.drawString(font, clip((selected ? "[√] " : "[] ") + option.title(), width - 10), x + 5, rowY + 5, selected ? CatalogSkin.ACCENT : 0xFFE0E0E0, false);
         }
     }
 
@@ -909,7 +924,7 @@ public final class TinkersCatalogScreen extends Screen {
         int y = popupY() + 2;
         int width = filterCategoryAreaWidth();
         int height = CATEGORY_BAR_HEIGHT - 4;
-        graphics.fill(popupX() + 1, popupY() + CATEGORY_BAR_HEIGHT - 1, popupX() + popupWidth() - 1, popupY() + CATEGORY_BAR_HEIGHT, 0xFF444444);
+        graphics.fill(popupX() + 1, popupY() + CATEGORY_BAR_HEIGHT - 1, popupX() + popupWidth() - 1, popupY() + CATEGORY_BAR_HEIGHT, 0xFF65513E);
         clampFilterCategoryScroll(categories);
         graphics.enableScissor(x, y, x + width, y + height);
         int buttonX = x - filterCategoryScroll;
@@ -917,13 +932,13 @@ public final class TinkersCatalogScreen extends Screen {
             int buttonWidth = filterCategoryButtonWidth(category);
             boolean selected = activeCategory != null && activeCategory.id().equals(category.id());
             boolean hovered = isWithin(mouseX, mouseY, buttonX, y, buttonWidth, height);
-            graphics.fill(buttonX, y, buttonX + buttonWidth, y + height, selected ? 0xFF6A6A6A : hovered ? 0xFF505050 : 0xFF383838);
-            graphics.renderOutline(buttonX, y, buttonWidth, height, selected ? 0xFFE0E0E0 : 0xFF151515);
+            CatalogSkin.draw(graphics, selected ? CatalogSkin.BUTTON_SELECTED : hovered ? CatalogSkin.BUTTON_HOVER : CatalogSkin.BUTTON,
+                buttonX, y, buttonWidth, height);
             graphics.drawCenteredString(font, category.title(), buttonX + buttonWidth / 2, y + 4, selected ? 0xFFFFFFFF : 0xFFD0D0D0);
             buttonX += buttonWidth + CATEGORY_GAP;
         }
         graphics.disableScissor();
-        graphics.drawString(font, Component.translatable("screen.tinkers_construct_filter.clear"), clearFilterX() + 4, popupY() + 6, 0xFFFFD86B, false);
+        graphics.drawString(font, Component.translatable("screen.tinkers_construct_filter.clear"), clearFilterX() + 4, popupY() + 6, CatalogSkin.ACCENT, false);
     }
 
     private void renderSortPopup(LegacyGuiGraphics graphics, int mouseX, int mouseY) {
@@ -937,7 +952,7 @@ public final class TinkersCatalogScreen extends Screen {
         int height = sortPopupHeight();
         overlayController.setBounds(x, y, width, height);
         overlayController.setContentMetrics(options.size(), rows);
-        overlayRenderer.renderPanelFrame(graphics, x, y, width, height, 0xFF0F0F0F, 0xFF252525, 0);
+        overlayRenderer.renderPanelFrame(graphics, x, y, width, height);
         renderSortCategoryBar(graphics, categories, activeCategory, mouseX, mouseY);
         if (options.isEmpty()) {
             graphics.drawString(font, clip(Component.translatable("screen.tinkers_construct_filter.no_sort_options").getString(), width - 10), x + 5, sortOptionsY() + 7, 0xFFE0E0E0, false);
@@ -952,8 +967,9 @@ public final class TinkersCatalogScreen extends Screen {
             SortOption option = options.get(index);
             boolean selected = selectedSorts.get(page).equals(option.id());
             boolean hovered = isWithin(mouseX, mouseY, x, rowY, width, POPUP_ROW_HEIGHT);
-            graphics.fill(x + 1, rowY, x + width - 1, rowY + POPUP_ROW_HEIGHT, hovered ? 0xFF505050 : 0xFF383838);
-            graphics.drawString(font, clip((selected ? "[√] " : "[] ") + option.title().getString(), width - 10), x + 5, rowY + 5, selected ? 0xFFFFD86B : 0xFFE0E0E0, false);
+            CatalogSkin.draw(graphics, hovered ? CatalogSkin.ROW_HOVER : CatalogSkin.ROW,
+                x + 1, rowY, width - 2, POPUP_ROW_HEIGHT);
+            graphics.drawString(font, clip((selected ? "[√] " : "[] ") + option.title().getString(), width - 10), x + 5, rowY + 5, selected ? CatalogSkin.ACCENT : 0xFFE0E0E0, false);
         }
     }
 
@@ -962,7 +978,7 @@ public final class TinkersCatalogScreen extends Screen {
         int y = popupY() + 2;
         int width = sortCategoryAreaWidth();
         int height = CATEGORY_BAR_HEIGHT - 4;
-        graphics.fill(popupX() + 1, popupY() + CATEGORY_BAR_HEIGHT - 1, popupX() + popupWidth() - 1, popupY() + CATEGORY_BAR_HEIGHT, 0xFF444444);
+        graphics.fill(popupX() + 1, popupY() + CATEGORY_BAR_HEIGHT - 1, popupX() + popupWidth() - 1, popupY() + CATEGORY_BAR_HEIGHT, 0xFF65513E);
         clampSortCategoryScroll(categories);
         graphics.enableScissor(x, y, x + width, y + height);
         int buttonX = x - sortCategoryScroll;
@@ -970,8 +986,8 @@ public final class TinkersCatalogScreen extends Screen {
             int buttonWidth = sortCategoryButtonWidth(category);
             boolean selected = activeCategory != null && activeCategory.id().equals(category.id());
             boolean hovered = isWithin(mouseX, mouseY, buttonX, y, buttonWidth, height);
-            graphics.fill(buttonX, y, buttonX + buttonWidth, y + height, selected ? 0xFF6A6A6A : hovered ? 0xFF505050 : 0xFF383838);
-            graphics.renderOutline(buttonX, y, buttonWidth, height, selected ? 0xFFE0E0E0 : 0xFF151515);
+            CatalogSkin.draw(graphics, selected ? CatalogSkin.BUTTON_SELECTED : hovered ? CatalogSkin.BUTTON_HOVER : CatalogSkin.BUTTON,
+                buttonX, y, buttonWidth, height);
             graphics.drawCenteredString(font, category.title(), buttonX + buttonWidth / 2, y + 4, selected ? 0xFFFFFFFF : 0xFFD0D0D0);
             buttonX += buttonWidth + CATEGORY_GAP;
         }
