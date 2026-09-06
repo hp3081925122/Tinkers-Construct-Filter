@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>图鉴材质切片预览</title>
+<style>
+body{margin:24px;background:#171513;color:#efe4d6;font:16px "Microsoft YaHei",sans-serif}
+main{max-width:1240px;margin:auto}h1{font-size:24px;margin-bottom:8px}p{color:#bea990}
+canvas{width:100%;height:auto;image-rendering:pixelated;display:block;border:1px solid #66513c}
+button{background:#352a23;color:#ffcf87;border:1px solid #947052;padding:8px 16px;margin:0 8px 12px 0;cursor:pointer}
+small{display:block;margin-top:12px;color:#bea990}
+</style>
+<main>
+<h1>锻铁 / 暖铜 · 图鉴材质预览</h1>
+<p>实际图集与九宫格比例预览，非游戏截图；文字和物品占位仅用于检查对比度。</p>
+<button id="filters">筛选弹层</button><button id="details">详情弹层</button><button id="none">关闭弹层</button>
+<canvas id="preview" width="940" height="540"></canvas>
+<small id="status">正在加载本项目图集…</small>
+</main>
+<script>
+// 使用与两版 CatalogSkin 相同的逻辑尺寸和切片边界，不依赖外部网络。
+const canvas = document.getElementById('preview'), ctx = canvas.getContext('2d'), atlas = new Image()
+let overlay = new URLSearchParams(location.search).get('view') || 'filters', count = 0
+atlas.src = '../src/main/resources/assets/tinkers_construct_filter/textures/gui/catalog_atlas.png'
+ctx.imageSmoothingEnabled = false
+// 每次绘制校验目的区域和源图集边界，发现错误立即终止预览。
+function blit(x,y,w,h,u,v,sw,sh) {
+  if (w <= 0 || h <= 0 || u < 0 || v < 0 || u+sw > 256 || v+sh > 256) throw Error('Invalid texture rectangle')
+  const scale = atlas.width / 256
+  ctx.drawImage(atlas,u*scale,v*scale,sw*scale,sh*scale,x,y,w,h)
+  count++
+}
+// 物品槽和滚动条使用单四边形，其余控件固定边角后拉伸中心。
+function skin(sprite,x,y,w,h,center=true) {
+  if(w<=0||h<=0)return
+  const u=sprite%4*64,v=Math.floor(sprite/4)*64,bx=Math.min(3,Math.floor(w/2)),by=Math.min(3,Math.floor(h/2))
+  if([10,11,14,15].includes(sprite)) {blit(x,y,w,h,u,v,64,64);return}
+  for(let r=0;r<3;r++)for(let c=0;c<3;c++){
+    if(!center&&r===1&&c===1)continue
+    const left=c===0?0:c===1?bx:w-bx,top=r===0?0:r===1?by:h-by
+    const dw=c===1?w-bx*2:bx,dh=r===1?h-by*2:by
+    if(dw>0&&dh>0)blit(x+left,y+top,dw,dh,u+(c===0?0:c===1?10:54),v+(r===0?0:r===1?10:54),c===1?44:10,r===1?44:10)
+  }
+}
+// 文本仅在预览中使用系统字体；游戏仍使用原版字体和语言文件。
+function text(value,x,y,color='#eee4d5',size=10){ctx.font=size+'px "Microsoft YaHei",sans-serif';ctx.fillStyle=color;ctx.fillText(value,x,y)}
+function button(value,x,y,w,state=4){skin(state,x,y,w,20);text(value,x+8,y+13,state===6?'#ffcf87':'#eee4d5')}
+// 按现有图鉴的界面坐标绘制典型布局，用于观察长面板和短按钮是否拉坏边框。
+function render() {
+  count=0;ctx.fillStyle='#151412';ctx.fillRect(0,0,940,540)
+  skin(0,9,9,922,522);skin(1,12,12,110,516);skin(2,126,12,802,23)
+  text('选择类型',42,30,'#fff1dd',13)
+  ;['匠魂材料','匠魂部件','匠魂强化','匠魂词条'].forEach((v,i)=>button(v,18,62+i*24,96,i===1?6:4))
+  ctx.fillStyle='#ffcf87';ctx.fillRect(14,87,2,18)
+  button('重要选项',132,14,90)
+  ctx.fillStyle='#000';ctx.fillRect(132,41,610,20);skin(13,131,40,612,22,false)
+  text('搜索名称、ID、词条或词条描述',136,54,'#bdb6aa',12)
+  button('筛选',750,41,54,overlay==='filters'?6:4);button('排序',808,41,54);button('升序',866,41,54)
+  text('529 个结果',132,76,'#c9b9a7',12);skin(1,132,87,788,431)
+  ;['岩石绑定结','岩石坚韧手柄','铜镐头','钢工具手柄','钴大板','玛玉灵大剑刃','黏液箭羽','木弓把','骨头工具手柄','下界合金绑定结','焦黑部件'].forEach((name,i)=>{
+    const y=90+i*38
+    skin(i===1?9:8,134,y,784,37);skin(10,138,y+10,18,18)
+    text('◆',143,y+23,['#7e8587','#77736c','#c68251','#a8adb5'][i%4])
+    text(name,161,y+14,'#fff3e7',12);text('材料词条 · 示例说明',161,y+28,'#bfb7af')
+  })
+  skin(14,915,91,2,425);skin(15,915,95,2,48)
+  if(overlay==='filters'){
+    skin(3,539,67,382,344);button('匠魂部件',546,71,84);button('对应工具',633,71,84);button('制作方式',720,71,84,6)
+    text('清空',876,85,'#ffcf87')
+    ;['部件加工台','浇铸','复合浇铸','未识别制作方式'].forEach((v,i)=>{skin(i===1?9:8,542,96+i*18,376,18);text((i===0?'[√] ':'[ ] ')+v,548,109+i*18,i===0?'#ffcf87':'#e0d8cf')})
+  }else if(overlay==='details'){
+    skin(3,539,120,382,260);text('点击可悬停悬浮窗，以查看详情信息',546,136,'#bfb7af',11)
+    text('带有下划线的字体可查看信息',546,150,'#bfb7af',11)
+    text('词条介绍',546,170,'#d0a0ff',12);text('锯齿 I',546,187,'#eee4d5',12)
+    ctx.fillStyle='#eee4d5';ctx.fillRect(546,189,40,1)
+    text('消耗材料',546,212,'#ffb347',12)
+    for(let i=0;i<4;i++)skin(i===1?11:10,546+i*19,222,18,18)
+    text('适用工具',546,258,'#70d070',12)
+    for(let i=0;i<26;i++)skin(10,546+i%13*19,268+Math.floor(i/13)*20,18,18)
+  }
+  // 一并检查真正禁用与普通按钮的区分，避免误把当前页画成禁用。
+  button('普通',18,420,96,4);button('悬停',18,444,96,5);button('禁用',18,468,96,7)
+  document.getElementById('status').textContent='图集 '+atlas.width+' × '+atlas.height+'；本帧 '+count+' 个材质四边形；缩放边界检查通过。'
+}
+atlas.onload=render
+atlas.onerror=()=>{document.getElementById('status').textContent='图集加载失败，请保留 docs 与 src 的相对目录。'}
+for(const id of ['filters','details','none'])document.getElementById(id).onclick=()=>{overlay=id;render()}
+</script>
+</html>
