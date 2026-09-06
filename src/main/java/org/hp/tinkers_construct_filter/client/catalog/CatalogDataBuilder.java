@@ -22,6 +22,7 @@ import slimeknights.tconstruct.library.recipe.material.MaterialRecipeCache;
 import slimeknights.tconstruct.library.recipe.modifiers.adding.IDisplayModifierRecipe;
 import slimeknights.tconstruct.library.tools.SlotType;
 import slimeknights.tconstruct.library.tools.definition.ToolDefinition;
+import slimeknights.tconstruct.library.tools.definition.module.material.ToolPartsHook;
 import slimeknights.tconstruct.library.tools.item.IModifiable;
 import slimeknights.tconstruct.library.tools.item.ITinkerStationDisplay;
 import slimeknights.tconstruct.library.tools.part.IToolPart;
@@ -53,7 +54,11 @@ public final class CatalogDataBuilder {
         List<PartTemplate> partTemplates = collectPartTemplates(registry);
         List<CatalogEntry> materials = new ArrayList<>();
         List<CatalogEntry> parts = new ArrayList<>();
-        List<CatalogEntry> modifiers = buildModifiers();
+        // 一次收集全部词条，再按真实配方区分强化列表。
+        List<CatalogEntry> traits = buildModifiers();
+        List<CatalogEntry> modifiers = traits.stream()
+            .filter(entry -> entry instanceof CatalogApi.ModifierView view && view.hasModifierRecipe())
+            .toList();
 
         for (IMaterial material : registry.getVisibleMaterials()) {
             if (material.isHidden()) {
@@ -110,7 +115,8 @@ public final class CatalogDataBuilder {
                     CatalogAttributes.collectTexts(stats),
                     template.itemId(),
                     template.typeId(),
-                    template.typeName()
+                    template.typeName(),
+                    template.toolCategories()
                 ));
             }
 
@@ -127,7 +133,27 @@ public final class CatalogDataBuilder {
             ));
         }
 
-        return new CatalogSnapshot(true, List.copyOf(materials), List.copyOf(parts), modifiers);
+        // 快照构建时建立反向索引，不在每一帧扫描全部材料和部件。
+        Map<String, List<CatalogEntry>> materialSources = new HashMap<>();
+        Map<String, List<CatalogEntry>> partSources = new HashMap<>();
+        for (CatalogEntry entry : materials) {
+            for (TraitData trait : ((BaseEntry) entry).traits) {
+                materialSources.computeIfAbsent(trait.id(), ignored -> new ArrayList<>()).add(entry);
+            }
+        }
+        for (CatalogEntry entry : parts) {
+            for (TraitData trait : ((BaseEntry) entry).traits) {
+                partSources.computeIfAbsent(trait.id(), ignored -> new ArrayList<>()).add(entry);
+            }
+        }
+        for (CatalogEntry entry : traits) {
+            ModifierCatalogEntry modifier = (ModifierCatalogEntry) entry;
+            modifier.sourceMaterials = List.copyOf(materialSources.getOrDefault(entry.getId(), List.of()));
+            modifier.sourceParts = List.copyOf(partSources.getOrDefault(entry.getId(), List.of()));
+        }
+        TinkersConstructFilter.LOGGER.debug("Trait source index built: traits={}, materials={}, parts={}",
+            traits.size(), materialSources.size(), partSources.size());
+        return new CatalogSnapshot(true, List.copyOf(materials), List.copyOf(parts), modifiers, traits);
     }
 
     private static List<CatalogEntry> buildModifiers() {
@@ -139,8 +165,15 @@ public final class CatalogDataBuilder {
             .forEach(modifier -> {
                 try {
                     String id = modifier.getId().toString();
-                    MutableModifierMetadata data = metadata.computeIfAbsent(id, ignored -> new MutableModifierMetadata());
-                    addTagMetadata(modifier, data);
+                    // 全词条保留无配方项目，但不将其标记为无槽位强化。
+                    MutableModifierMetadata data = metadata.get(id);
+                    boolean hasModifierRecipe = data != null;
+                    if (!hasModifierRecipe) {
+                        data = new MutableModifierMetadata();
+                        data.slotCategories.add("non-craftable");
+                    } else {
+                        addTagMetadata(modifier, data);
+                    }
                     if (data.slotCategories.isEmpty()) {
                         data.slotCategories.add("slotless");
                     }
@@ -157,7 +190,8 @@ public final class CatalogDataBuilder {
                         data.toolCategories,
                         descriptions,
                         data.recipeTools,
-                        data.recipeVariants
+                        data.recipeVariants,
+                        hasModifierRecipe
                     ));
                 } catch (RuntimeException exception) {
                     TinkersConstructFilter.LOGGER.debug("Skipping unavailable modifier", exception);
@@ -276,6 +310,7 @@ public final class CatalogDataBuilder {
             case "defense" -> Component.translatable("filter.tinkers_construct_filter.modifier_slot_defense").getString();
             case "ability" -> Component.translatable("filter.tinkers_construct_filter.modifier_slot_ability").getString();
             case "slotless" -> Component.translatable("filter.tinkers_construct_filter.modifier_slotless").getString();
+            case "non-craftable" -> Component.translatable("filter.tinkers_construct_filter.non_craftable_trait").getString();
             default -> prettyCategoryName(category);
         };
     }
@@ -304,6 +339,45 @@ public final class CatalogDataBuilder {
     }
 
     private static List<PartTemplate> collectPartTemplates(IMaterialRegistry registry) {
+        // 每次构建快照只扫描一次工具定义，按具体部件物品建立反向索引，兼容附属工具。
+        Map<String, Map<String, String>> toolsByPart = new LinkedHashMap<>();
+        for (Item item : ForgeRegistries.ITEMS.getValues()) {
+            if (!(item instanceof IModifiable modifiable)) {
+                continue;
+            }
+            ResourceLocation toolId = ForgeRegistries.ITEMS.getKey(item);
+            if (toolId == null) {
+                continue;
+            }
+            try {
+                ToolDefinition definition = modifiable.getToolDefinition();
+                if (definition == null || !definition.isDataLoaded()) {
+                    TinkersConstructFilter.LOGGER.debug("Skipping unloaded tool definition for part filters: {}", toolId);
+                    continue;
+                }
+                List<IToolPart> toolParts = ToolPartsHook.parts(definition);
+                if (toolParts.isEmpty()) {
+                    continue;
+                }
+                String toolName = item instanceof ITinkerStationDisplay display
+                    ? display.getLocalizedName().getString()
+                    : Component.translatable(item.getDescriptionId()).getString();
+
+                // 使用部件注册 ID 匹配，避免把属性类型相同但不能互换的部件混为一类。
+                for (IToolPart toolPart : toolParts) {
+                    ResourceLocation partId = ForgeRegistries.ITEMS.getKey(toolPart.asItem());
+                    if (partId != null) {
+                        toolsByPart.computeIfAbsent(partId.toString(), ignored -> new LinkedHashMap<>())
+                            .putIfAbsent(toolId.toString(), toolName);
+                    }
+                }
+            } catch (RuntimeException exception) {
+                TinkersConstructFilter.LOGGER.debug("Skipping unavailable tool definition for part filters: {}", toolId, exception);
+            }
+        }
+        TinkersConstructFilter.LOGGER.debug("Collected tool associations for {} distinct part items", toolsByPart.size());
+
+        // 每种部件共享一份工具索引，各材质变体无需重复查询工具定义。
         List<PartTemplate> result = new ArrayList<>();
         for (Item item : ForgeRegistries.ITEMS.getValues()) {
             if (!(item instanceof IToolPart part)) {
@@ -316,7 +390,8 @@ public final class CatalogDataBuilder {
             }
 
             MaterialStatsId statType = part.getStatType();
-            result.add(new PartTemplate(part, itemId.toString(), statType, statType.toString(), statTypeName(registry, statType)));
+            result.add(new PartTemplate(part, itemId.toString(), statType, statType.toString(), statTypeName(registry, statType),
+                toolsByPart.getOrDefault(itemId.toString(), Map.of())));
         }
         result.sort(Comparator.comparing(PartTemplate::typeId).thenComparing(PartTemplate::itemId));
         return List.copyOf(result);
@@ -383,7 +458,12 @@ public final class CatalogDataBuilder {
         return translationKey.equals(name) ? id.toString() : name;
     }
 
-    private record PartTemplate(IToolPart part, String itemId, MaterialStatsId statType, String typeId, String typeName) {
+    private record PartTemplate(IToolPart part, String itemId, MaterialStatsId statType, String typeId, String typeName,
+                                Map<String, String> toolCategories) {
+        // 固化索引，保证所有材质变体安全共享。
+        private PartTemplate {
+            toolCategories = Collections.unmodifiableMap(new LinkedHashMap<>(toolCategories));
+        }
     }
 
     private record TraitData(String id, String name, List<String> descriptions) {
@@ -517,16 +597,18 @@ public final class CatalogDataBuilder {
         private final String partId;
         private final String partType;
         private final String partTypeName;
+        private final Map<String, String> toolCategories;
 
         private PartEntry(String id, ItemStack displayStack, String materialId, String materialName, int materialLevel, List<TraitData> traits, Map<String, Double> attributeValues,
                           Map<String, String> attributeTexts,
-                          String partId, String partType, String partTypeName) {
+                          String partId, String partType, String partTypeName, Map<String, String> toolCategories) {
             super(id, displayStack, displayStack.getHoverName().getString(), materialLevel, traits, attributeValues, attributeTexts);
             this.materialId = materialId;
             this.materialName = materialName;
             this.partId = partId;
             this.partType = partType;
             this.partTypeName = partTypeName;
+            this.toolCategories = toolCategories;
         }
 
         @Override
@@ -554,6 +636,12 @@ public final class CatalogDataBuilder {
             return partTypeName;
         }
 
+        /** 提供快照中已缓存的工具筛选选项。 */
+        @Override
+        public Map<String, String> getToolCategories() {
+            return toolCategories;
+        }
+
         @Override
         public ItemStack getMaterializedItem() {
             return getDisplayStack();
@@ -566,16 +654,31 @@ public final class CatalogDataBuilder {
     }
 
     private static final class ModifierCatalogEntry extends BaseEntry implements CatalogApi.ModifierView {
+        // 仅在快照发布之前写入，后续悬浮查询直接复用不可变列表。
+        private List<CatalogEntry> sourceMaterials = List.of();
+        private List<CatalogEntry> sourceParts = List.of();
+
+        /** 返回含有该词条的材料。 */
+        @Override
+        public List<CatalogEntry> getSourceMaterials() { return sourceMaterials; }
+
+        /** 返回含有该词条的材料化部件。 */
+        @Override
+        public List<CatalogEntry> getSourceParts() { return sourceParts; }
+
         private final Map<String, String> slotCategories;
         private final Map<String, String> toolCategories;
         private final List<String> descriptions;
+        // 配方存在性独立于输入物品数量，避免把特殊配方误判为无配方。
+        private final boolean hasModifierRecipe;
 
         private ModifierCatalogEntry(String id, ItemStack displayStack, String name, Set<String> slotCategories, Map<String, String> toolCategories, List<String> descriptions,
-                                     List<ItemStack> recipeTools, List<CatalogApi.ModifierRecipeView> recipeVariants) {
+                                     List<ItemStack> recipeTools, List<CatalogApi.ModifierRecipeView> recipeVariants, boolean hasModifierRecipe) {
             super(id, displayStack, name, 0, List.of(), Map.of());
             this.slotCategories = Collections.unmodifiableMap(titledCategories(slotCategories));
             this.toolCategories = Collections.unmodifiableMap(new LinkedHashMap<>(toolCategories));
             this.descriptions = List.copyOf(descriptions);
+            this.hasModifierRecipe = hasModifierRecipe;
             this.recipeTools = recipeTools.stream().map(ItemStack::copy).toList();
             this.recipeVariants = recipeVariants.stream()
                 .map(recipe -> new CatalogApi.ModifierRecipeView(recipe.inputSlots()))
@@ -584,6 +687,12 @@ public final class CatalogDataBuilder {
 
         private final List<ItemStack> recipeTools;
         private final List<CatalogApi.ModifierRecipeView> recipeVariants;
+
+        /** 返回当前词条是否有可展示的强化配方。 */
+        @Override
+        public boolean hasModifierRecipe() {
+            return hasModifierRecipe;
+        }
 
         @Override
         public Map<String, String> getSlotCategories() {

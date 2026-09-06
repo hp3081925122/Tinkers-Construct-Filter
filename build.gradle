@@ -52,6 +52,17 @@ mixin {
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
+// 启动前重新生成 IDE 配置及类路径，补回 clean 清除的运行依赖清单。
+tasks.matching { it.name == 'prepareRunClientCompile' }.configureEach {
+    dependsOn 'genIntellijRuns'
+
+    // 记录运行清单状态，便于排查依赖已下载却未被 Forge 发现的问题。
+    doFirst {
+        def classpathFile = layout.buildDirectory.file('classpath/runClient_minecraftClasspath.txt').get().asFile
+        logger.debug('Client launch classpath prepared: path={}, exists={}', classpathFile, classpathFile.isFile())
+    }
+}
+
 repositories {
     maven { url = 'https://www.cursemaven.com' }
 }

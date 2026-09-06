@@ -66,4 +66,18 @@ public final class ClientConfig {
         SEARCH_HISTORY.set(List.copyOf(history));
         SEARCH_HISTORY.save();
     }
+
+    /** 删除搜索历史中的指定记录，并立即保存客户端配置。 */
+    public static void removeSearch(String value) {
+        String query = value == null ? "" : value.trim();
+        if (query.isEmpty()) {
+            return;
+        }
+
+        List<String> history = new ArrayList<>(getSearchHistory());
+        if (history.remove(query)) {
+            SEARCH_HISTORY.set(List.copyOf(history));
+            SEARCH_HISTORY.save();
+        }
+    }
 }
