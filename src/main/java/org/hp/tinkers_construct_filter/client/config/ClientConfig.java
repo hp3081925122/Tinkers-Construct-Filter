@@ -1,6 +1,7 @@
 package org.hp.tinkers_construct_filter.client.config;
 
 import net.minecraftforge.common.ForgeConfigSpec;
+import org.hp.tinkers_construct_filter.TinkersConstructFilter;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -65,6 +66,7 @@ public final class ClientConfig {
         }
         SEARCH_HISTORY.set(List.copyOf(history));
         SEARCH_HISTORY.save();
+        TinkersConstructFilter.LOGGER.debug("Search history saved: {}", query);
     }
 
     /** 删除搜索历史中的指定记录，并立即保存客户端配置。 */

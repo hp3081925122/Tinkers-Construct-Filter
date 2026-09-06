@@ -44,10 +44,24 @@ public final class CatalogApi {
 
         String getPartTypeName();
 
+        /** 返回可使用此部件组装的工具物品 ID 与本地化名称。 */
+        default Map<String, String> getToolCategories() {
+            return Map.of();
+        }
+
         ItemStack getMaterializedItem();
     }
 
     public interface ModifierView extends EntryView {
+        /** 返回构建快照时按词条 ID 反向关联的材料和部件。 */
+        default List<CatalogEntry> getSourceMaterials() { return List.of(); }
+
+        /** 部件保留材料化物品，供悬浮窗显示准确名称及物品信息。 */
+        default List<CatalogEntry> getSourceParts() { return List.of(); }
+
+        /** 区分可通过配方添加的强化与仅作为特性存在的词条。 */
+        boolean hasModifierRecipe();
+
         Map<String, String> getSlotCategories();
 
         Map<String, String> getToolCategories();
