@@ -2,6 +2,12 @@
 
 本次只改变图鉴外观，不改筛选、排序、配方识别和鼠标命中范围。两版使用相同的锻铁暖铜图集，不覆盖 Minecraft 全局按钮材质。
 
+## 清爽版调整
+
+原图中心的斑驳颗粒在九宫格拉伸后形成大块色斑和横向条纹。本次仅替换两版图集：大面板、侧栏和悬浮框采用近纯色中性深灰，按钮弱化纹理，顶部不再使用大面积棕色。保留细金属边、小铆钉与选中状态的暖铜强调，不修改绘制次数或交互逻辑。
+
+资源处理完成后，正在运行的开发客户端可用 F3+T 重载资源；若客户端已经退出，下次启动时会读取新材质。重点检查大面板无明显色斑、长按钮无拉伸条纹，以及普通、悬停、选中和禁用状态仍可区分。
+
 ## 资源与替换
 
 - 游戏资源：`assets/tinkers_construct_filter/textures/gui/catalog_atlas.png`。
@@ -39,7 +45,7 @@
 
 使用内置图像生成工具制作原始 PNG，未下载第三方游戏材质。生产资源保留生成结果，不进行脚本图像重绘。
 
-生成提示词：
+初版生成提示词（保留来源记录）：
 
 ```text
 Use case: stylized-concept.
@@ -51,4 +57,21 @@ ROW 2 left-to-right: normal dark iron button; hover button lighter warm gray iro
 ROW 3 left-to-right: normal flat dark graphite list row with very subtle border; hovered list row slightly lighter graphite with copper edge; dark recessed item socket; highlighted recessed item socket with warm copper edge.
 ROW 4 left-to-right: blackened recessed search field; focused search field with clear copper border; near-black scrollbar track; copper scrollbar thumb.
 Keep each shape filling its exact 256 square cell and border completely inside its cell. No spacing between cells. No mockup labels, no text anywhere, no watermark. Visually consistent utilitarian Minecraft inventory UI kit, NOT ornate fantasy, not photorealistic.
+```
+
+## 清爽版编辑提示词
+
+使用内置图像生成工具，以项目原图集为编辑目标；保留四行四列布局和切片位置，未使用脚本重绘图片。
+
+```text
+Use case: precise-object-edit.
+Asset type: production Minecraft GUI 4x4 nine-slice texture atlas.
+Image 1 is the EDIT TARGET. Clean up this exact atlas, preserving its square canvas, strict four equal columns and four equal rows, 16 sprite positions, border geometry, and tiny corner rivets. No gutters, no outside margin, no text.
+Primary change: REMOVE ALL mottled pixel noise, stone texture, diagonal patterns, brushed streaks, scratches and grain from EVERY center and border. The large inner center of EACH cell must be an absolutely UNIFORM SOLID COLOR, no gradients, no lighting falloff, no dithering. A clean minimalist dark iron UI with subtle copper edges, not dirty or rusty.
+Keep hard crisp pixel-aligned edges, simple thin bevels, small square rivets; reduce border detail and contrast. Borders remain inside the outer 15 percent of each cell, leaving central 70 percent completely flat. Copper is restrained and muted, not bright orange.
+Row1 left to right: main window solid neutral charcoal #252729 with muted thin copper edge; sidebar solid #1c1e20 with iron edge; header solid neutral #2b2d2f (REMOVE brown fill) with iron edge; popup solid #202224 with muted copper edge.
+Row2: normal button solid #33363a iron edge; hover button solid #41454a with muted copper edge; selected button solid #40352a with clear warm copper edge; disabled button solid #232528 dim iron edge.
+Row3: list row solid #292c2f with subtle iron edge; hover row solid #34383c with muted copper edge; recessed item slot solid #17191b center iron edge; highlighted slot same flat dark center with muted copper edge.
+Row4: input solid #141618 iron edge; focused input same flat center copper edge; scroll track flat near-black; scroll thumb preserve centered narrow copper rectangular bar but make it solid muted copper with flat near-black surround.
+Preserve all 16 cell roles and their existing arrangement exactly. Opaque PNG, square atlas, no transparency, no added symbols, no icons, no mockup. NO NOISE ANYWHERE. Large flat color areas are essential because this atlas will be stretched behind text.
 ```

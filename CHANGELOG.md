@@ -1,3 +1,23 @@
+# 1.2
+
+## English
+
+- Added production-method filters for materials and parts, using loaded recipes without addon-specific exceptions.
+- Changed trait introductions in Traits and Modifiers tooltips to underlined names with hover descriptions.
+- Expanded KubeJS support across all four catalogs: custom filter categories, filters, sorting, trait-category overrides and read-only entry data. Added examples and documentation.
+- Improved multi-select filtering: material tiers and part types use OR within their category, while different categories combine with AND.
+- Added a catalog-only dark iron and copper UI theme, then reduced mottled noise and stretched grain for clearer panels, buttons and tooltips.
+- Added bilingual Wiki documentation and catalog-extension regression checks.
+
+## 中文
+
+- 为匠魂材料和部件新增制作方式筛选，依据实际加载的配方识别，不添加附属模组特判。
+- 匠魂词条与匠魂强化悬浮框中的词条介绍改为带下划线名称，鼠标悬停显示详情。
+- 扩展四个图鉴页面的 KubeJS 支持：自定义筛选分类、筛选、排序、词条分类覆盖及只读条目数据，并提供示例和文档。
+- 改进多选筛选：材料等级和部件类型在同一分类内取并集，不同分类之间取交集。
+- 新增图鉴专用深灰铁质与细铜边主题，减少斑驳噪点和拉伸条纹，提高面板、按钮及悬浮框的可读性。
+- 补充中英文 Wiki 文档及图鉴扩展回归检查。
+
 # 1.1
 
 ## English
