@@ -22,6 +22,9 @@ import slimeknights.tconstruct.library.recipe.material.MaterialRecipe;
 import slimeknights.tconstruct.library.recipe.modifiers.adding.IDisplayModifierRecipe;
 import slimeknights.tconstruct.library.tools.SlotType;
 import slimeknights.tconstruct.library.tools.definition.ToolDefinition;
+import slimeknights.tconstruct.library.tools.definition.module.build.ToolTraitHook;
+import slimeknights.tconstruct.library.tools.item.IModifiableDisplay;
+import slimeknights.tconstruct.library.tools.nbt.MaterialNBT;
 import slimeknights.tconstruct.library.tools.definition.module.material.ToolPartsHook;
 import slimeknights.tconstruct.library.tools.item.IModifiable;
 import slimeknights.tconstruct.library.tools.item.ITinkerStationDisplay;
@@ -52,6 +55,8 @@ public final class CatalogDataBuilder {
 
         IMaterialRegistry registry = MaterialRegistry.getInstance();
         List<PartTemplate> partTemplates = collectPartTemplates(registry);
+        // 制作方式只计算一次，两页共用同一份实际配方索引。
+        Map<String, Set<String>> productionMethods = CatalogProductionMethods.collect();
         List<CatalogEntry> materials = new ArrayList<>();
         List<CatalogEntry> parts = new ArrayList<>();
         // 一次收集全部词条，再按真实配方区分强化列表。
@@ -79,6 +84,7 @@ public final class CatalogDataBuilder {
 
             ItemStack fallbackDisplay = materialDisplay(variant);
             int availablePartCount = 0;
+            Set<String> materialProductionMethods = new LinkedHashSet<>();
             for (PartTemplate template : partTemplates) {
                 if (!template.part().canUseMaterial(materialId)) {
                     continue;
@@ -101,7 +107,8 @@ public final class CatalogDataBuilder {
 
                 List<TraitData> partTraits = collectTraits(registry, materialId, template.statType());
                 for (TraitData trait : partTraits) {
-                    materialTraitMap.putIfAbsent(trait.id(), trait);
+                    // 跨部件只取最高等级，不把互斥部件的词条累加成工具等级。
+                    materialTraitMap.merge(trait.id(), trait, (left, right) -> left.level() >= right.level() ? left : right);
                 }
 
                 parts.add(new PartEntry(
@@ -116,8 +123,11 @@ public final class CatalogDataBuilder {
                     template.itemId(),
                     template.typeId(),
                     template.typeName(),
-                    template.toolCategories()
+                    template.toolCategories(),
+                    productionMethods.getOrDefault(materialId + "@" + template.itemId(), Set.of("unknown"))
                 ));
+                // 材料筛选表示至少一个部件支持该方式，也保留未识别的部件。
+                materialProductionMethods.addAll(productionMethods.getOrDefault(materialId + "@" + template.itemId(), Set.of("unknown")));
             }
 
             materials.add(new MaterialEntry(
@@ -129,10 +139,13 @@ public final class CatalogDataBuilder {
                 materialAttributes,
                 materialAttributeTexts,
                 material.getSortOrder(),
-                availablePartCount
+                availablePartCount,
+                materialProductionMethods.isEmpty() ? Set.of("unknown") : materialProductionMethods
             ));
         }
 
+        // 记录词条元数据规模，方便核对脚本读取及部件专用词条回退。
+        TinkersConstructFilter.LOGGER.debug("Catalog trait metadata collected: materials={}, parts={}", materials.size(), parts.size());
         // 快照构建时建立反向索引，不在每一帧扫描全部材料和部件。
         Map<String, List<CatalogEntry>> materialSources = new HashMap<>();
         Map<String, List<CatalogEntry>> partSources = new HashMap<>();
@@ -146,10 +159,36 @@ public final class CatalogDataBuilder {
                 partSources.computeIfAbsent(trait.id(), ignored -> new ArrayList<>()).add(entry);
             }
         }
+        // 使用空材料查询工具定义，排除材质词条和玩家后加的强化；只在构建快照时扫描。
+        Map<String, List<ItemStack>> toolSources = new HashMap<>();
+        for (Item item : ForgeRegistries.ITEMS.getValues()) {
+            if (!(item instanceof IModifiable modifiable)) {
+                continue;
+            }
+            try {
+                ToolDefinition definition = modifiable.getToolDefinition();
+                if (definition == null || !definition.isDataLoaded()) {
+                    continue;
+                }
+                List<ModifierEntry> innateTraits = ToolTraitHook.getTraits(definition, MaterialNBT.EMPTY).getModifiers();
+                if (innateTraits.isEmpty()) {
+                    continue;
+                }
+                // 复用匠魂展示物品，保证未组装工具也有正确的图标。
+                ItemStack displayStack = IModifiableDisplay.getDisplayStack(item).copy();
+                for (ModifierEntry trait : innateTraits) {
+                    toolSources.computeIfAbsent(trait.getId().toString(), ignored -> new ArrayList<>()).add(displayStack);
+                }
+            } catch (RuntimeException exception) {
+                TinkersConstructFilter.LOGGER.debug("Skipping unavailable innate tool traits: {}", ForgeRegistries.ITEMS.getKey(item), exception);
+            }
+        }
+        TinkersConstructFilter.LOGGER.debug("Innate tool trait source index built: traits={}", toolSources.size());
         for (CatalogEntry entry : traits) {
             ModifierCatalogEntry modifier = (ModifierCatalogEntry) entry;
             modifier.sourceMaterials = List.copyOf(materialSources.getOrDefault(entry.getId(), List.of()));
             modifier.sourceParts = List.copyOf(partSources.getOrDefault(entry.getId(), List.of()));
+            modifier.sourceTools = toolSources.getOrDefault(entry.getId(), List.of()).stream().map(ItemStack::copy).toList();
         }
         TinkersConstructFilter.LOGGER.debug("Trait source index built: traits={}, materials={}, parts={}",
             traits.size(), materialSources.size(), partSources.size());
@@ -418,7 +457,7 @@ public final class CatalogDataBuilder {
 
     private static List<TraitData> collectTraits(IMaterialRegistry registry, MaterialId materialId, MaterialStatsId statType) {
         Map<String, TraitData> traits = new LinkedHashMap<>();
-        addTraits(registry.getDefaultTraits(materialId), traits);
+        // 匠魂已在没有专用定义时回退默认词条，不能再合并被专用定义替代的默认词条。
         addTraits(registry.getTraits(materialId, statType), traits);
         return List.copyOf(traits.values());
     }
@@ -433,7 +472,9 @@ public final class CatalogDataBuilder {
                     .map(Component::getString)
                     .filter(description -> !description.isBlank())
                     .toList();
-                traits.putIfAbsent(id, new TraitData(id, name, descriptions));
+                // 保存匠魂真实等级，同一汇总中重复出现时只保留最高值。
+                TraitData trait = new TraitData(id, name, entry.getLevel(), descriptions);
+                traits.merge(id, trait, (left, right) -> left.level() >= right.level() ? left : right);
             } catch (RuntimeException exception) {
                 TinkersConstructFilter.LOGGER.debug("Skipping unavailable material trait", exception);
             }
@@ -476,7 +517,7 @@ public final class CatalogDataBuilder {
         }
     }
 
-    private record TraitData(String id, String name, List<String> descriptions) {
+    private record TraitData(String id, String name, int level, List<String> descriptions) {
     }
 
     private abstract static class BaseEntry implements CatalogEntry {
@@ -487,6 +528,7 @@ public final class CatalogDataBuilder {
         private final List<CatalogEntry.TraitTooltip> traitTooltips;
         private final List<String> traitNames;
         private final List<String> traitDescriptions;
+        private final Map<String, Integer> traitLevels;
         private final Map<String, Double> attributeValues;
         private final Map<String, String> attributeTexts;
         private final ItemStack displayStack;
@@ -502,6 +544,10 @@ public final class CatalogDataBuilder {
             this.name = name;
             this.materialLevel = materialLevel;
             this.traits = List.copyOf(traits);
+            // 在构建快照时收集，筛选回调只读取不可变索引。
+            Map<String, Integer> levels = new LinkedHashMap<>();
+            this.traits.forEach(trait -> levels.merge(trait.id(), trait.level(), Math::max));
+            this.traitLevels = Collections.unmodifiableMap(levels);
             this.traitTooltips = this.traits.stream()
                 .map(trait -> new CatalogEntry.TraitTooltip(trait.name(), trait.descriptions()))
                 .toList();
@@ -542,6 +588,12 @@ public final class CatalogDataBuilder {
             return traitNames;
         }
 
+        /** 返回稳定标识及对应等级，脚本不能修改快照。 */
+        @Override
+        public Map<String, Integer> getTraitLevels() {
+            return traitLevels;
+        }
+
         @Override
         public List<String> getTraitDescriptions() {
             return traitDescriptions;
@@ -576,13 +628,21 @@ public final class CatalogDataBuilder {
     private static final class MaterialEntry extends BaseEntry implements CatalogApi.MaterialView {
         private final int defaultSortOrder;
         private final int availablePartCount;
+        private final Set<String> productionMethods;
 
         private MaterialEntry(String id, ItemStack displayStack, String name, int materialLevel, List<TraitData> traits, Map<String, Double> attributeValues,
                               Map<String, String> attributeTexts,
-                              int defaultSortOrder, int availablePartCount) {
+                              int defaultSortOrder, int availablePartCount, Set<String> productionMethods) {
             super(id, displayStack, name, materialLevel, traits, attributeValues, attributeTexts);
             this.defaultSortOrder = defaultSortOrder;
             this.availablePartCount = availablePartCount;
+            this.productionMethods = Set.copyOf(productionMethods);
+        }
+
+        /** 返回当前材料所有部件的制作方式汇总。 */
+        @Override
+        public Set<String> getProductionMethods() {
+            return productionMethods;
         }
 
         @Override
@@ -608,10 +668,11 @@ public final class CatalogDataBuilder {
         private final String partType;
         private final String partTypeName;
         private final Map<String, String> toolCategories;
+        private final Set<String> productionMethods;
 
         private PartEntry(String id, ItemStack displayStack, String materialId, String materialName, int materialLevel, List<TraitData> traits, Map<String, Double> attributeValues,
                           Map<String, String> attributeTexts,
-                          String partId, String partType, String partTypeName, Map<String, String> toolCategories) {
+                          String partId, String partType, String partTypeName, Map<String, String> toolCategories, Set<String> productionMethods) {
             super(id, displayStack, displayStack.getHoverName().getString(), materialLevel, traits, attributeValues, attributeTexts);
             this.materialId = materialId;
             this.materialName = materialName;
@@ -619,6 +680,13 @@ public final class CatalogDataBuilder {
             this.partType = partType;
             this.partTypeName = partTypeName;
             this.toolCategories = toolCategories;
+            this.productionMethods = Set.copyOf(productionMethods);
+        }
+
+        /** 返回当前材料化部件的制作方式缓存。 */
+        @Override
+        public Set<String> getProductionMethods() {
+            return productionMethods;
         }
 
         @Override
@@ -667,6 +735,12 @@ public final class CatalogDataBuilder {
         // 仅在快照发布之前写入，后续悬浮查询直接复用不可变列表。
         private List<CatalogEntry> sourceMaterials = List.of();
         private List<CatalogEntry> sourceParts = List.of();
+        // 工具来源独立存储，避免与强化配方的适用工具混淆。
+        private List<ItemStack> sourceTools = List.of();
+
+        /** 返回副本，避免悬浮渲染或扩展调用修改快照中的展示物品。 */
+        @Override
+        public List<ItemStack> getSourceTools() { return sourceTools.stream().map(ItemStack::copy).toList(); }
 
         /** 返回含有该词条的材料。 */
         @Override

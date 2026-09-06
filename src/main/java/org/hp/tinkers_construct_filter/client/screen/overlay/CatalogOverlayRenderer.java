@@ -66,12 +66,14 @@ public final class CatalogOverlayRenderer {
         boolean hovered = mouseX >= itemX - 1 && mouseX < itemX + 17
             && mouseY >= itemY - 1 && mouseY < itemY + 17;
         graphics.fill(itemX - 1, itemY - 1, itemX + 17, itemY + 17, hovered ? 0xFF6A4A72 : 0xFF3A2B40);
-        ItemStack renderStack = IModifiableDisplay.getDisplayStack(stack.getItem());
-        if (stack.getItem() instanceof IModifiableDisplay) {
-            String itemId = String.valueOf(ForgeRegistries.ITEMS.getKey(stack.getItem()));
-            if (LOGGED_DISPLAY_MAPPINGS.add(itemId)) {
-                TinkersConstructFilter.LOGGER.debug("Using display stack for overlay item {}", itemId);
-            }
+        // 带材质的部件和已组装工具必须保留原始物品数据，仅空白工具使用展示模型。
+        boolean useDisplayFallback = stack.getItem() instanceof IModifiableDisplay && !stack.hasTag();
+        ItemStack renderStack = useDisplayFallback ? IModifiableDisplay.getDisplayStack(stack.getItem()) : stack;
+        String itemId = String.valueOf(ForgeRegistries.ITEMS.getKey(stack.getItem()));
+        // 每种渲染路径只记录一次，便于核对材质是否保留，避免逐帧刷屏。
+        if (LOGGED_DISPLAY_MAPPINGS.add(itemId + ":" + useDisplayFallback)) {
+            TinkersConstructFilter.LOGGER.debug("Overlay item render: item={}, originalTag={}, displayFallback={}",
+                itemId, stack.hasTag(), useDisplayFallback);
         }
         graphics.renderItem(renderStack, itemX, itemY);
         graphics.renderItemDecorations(font, stack, itemX, itemY);
