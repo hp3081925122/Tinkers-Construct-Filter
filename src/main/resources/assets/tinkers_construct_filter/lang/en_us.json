@@ -1,4 +1,6 @@
 {
+  "screen.tinkers_construct_filter.part_material": "Material: %s",
+  "screen.tinkers_construct_filter.innate_tool_traits": "Innate Tool Traits",
   "filter.tinkers_construct_filter.trait_type": "Trait Type",
   "filter.tinkers_construct_filter.trait_attack": "Attack Traits",
   "filter.tinkers_construct_filter.trait_defense": "Defense Traits",
@@ -46,6 +48,11 @@
   "filter.tinkers_construct_filter.material_level": "Material level %s",
   "filter.tinkers_construct_filter.part_category": "Tinkers' parts",
   "filter.tinkers_construct_filter.part_tool_category": "Corresponding tools",
+  "filter.tinkers_construct_filter.production_category": "Production method",
+  "filter.tinkers_construct_filter.production_part_builder": "Part Builder",
+  "filter.tinkers_construct_filter.production_casting": "Casting",
+  "filter.tinkers_construct_filter.production_composite_casting": "Composite casting",
+  "filter.tinkers_construct_filter.production_unknown": "Unrecognized production method",
   "filter.tinkers_construct_filter.material_level_category": "Material levels",
   "filter.tinkers_construct_filter.modifier_slot_category": "Modifier slots",
   "filter.tinkers_construct_filter.modifier_tool_category": "Applicable tools",

@@ -114,3 +114,19 @@ tasks.named('jar', Jar).configure {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
+
+// 独立执行目录扩展回归测试，不启动客户端，也不生成发布 JAR。
+tasks.register('catalogExtensionTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'org.hp.tinkers_construct_filter.client.catalog.CatalogExtensionsTest'
+    // 日志放入构建目录，示例路径使用绝对路径，不污染源码工作树。
+    workingDir = layout.buildDirectory.dir('catalog-tests').get().asFile
+    args file('docs/examples/catalog_extensions.js').absolutePath
+    doFirst {
+        workingDir.mkdirs()
+    }
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}

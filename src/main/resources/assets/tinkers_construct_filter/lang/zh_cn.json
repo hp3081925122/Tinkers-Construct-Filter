@@ -1,4 +1,6 @@
 {
+  "screen.tinkers_construct_filter.part_material": "材质：%s",
+  "screen.tinkers_construct_filter.innate_tool_traits": "工具自带词条",
   "filter.tinkers_construct_filter.trait_type": "词条类型",
   "filter.tinkers_construct_filter.trait_attack": "攻击词条",
   "filter.tinkers_construct_filter.trait_defense": "防御词条",
@@ -46,6 +48,11 @@
   "filter.tinkers_construct_filter.material_level": "材料等级 %s",
   "filter.tinkers_construct_filter.part_category": "匠魂部件",
   "filter.tinkers_construct_filter.part_tool_category": "对应工具",
+  "filter.tinkers_construct_filter.production_category": "制作方式",
+  "filter.tinkers_construct_filter.production_part_builder": "部件加工台",
+  "filter.tinkers_construct_filter.production_casting": "浇铸",
+  "filter.tinkers_construct_filter.production_composite_casting": "复合浇铸",
+  "filter.tinkers_construct_filter.production_unknown": "未识别制作方式",
   "filter.tinkers_construct_filter.material_level_category": "材料等级",
   "filter.tinkers_construct_filter.modifier_slot_category": "强化槽位",
   "filter.tinkers_construct_filter.modifier_tool_category": "适用工具",

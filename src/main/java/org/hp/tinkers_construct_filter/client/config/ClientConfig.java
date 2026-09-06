@@ -8,12 +8,19 @@ import java.util.List;
 
 public final class ClientConfig {
     public static final ForgeConfigSpec SPEC;
+    // 控制等级筛选选项的上限，负一表示按材料数据自动确定。
+    public static final ForgeConfigSpec.IntValue MATERIAL_LEVEL_FILTER_MAX;
     public static final ForgeConfigSpec.IntValue SEARCH_HISTORY_LIMIT;
     public static final ForgeConfigSpec.IntValue SEARCH_HISTORY_VISIBLE_ROWS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SEARCH_HISTORY;
 
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
+        // 仅限制筛选选项范围，不改变材料等级或材料列表数据。
+        builder.push("materials");
+        MATERIAL_LEVEL_FILTER_MAX = builder.comment("材料等级筛选从 0 开始；-1 自动使用当前材料最大等级，0~1000 指定筛选上限。仅控制选项，不隐藏材料。 / Material level filters start at 0; -1 uses the highest loaded material level, 0-1000 sets the upper limit. Only affects filter options, not material visibility.")
+            .defineInRange("levelFilterMax", -1, -1, 1000);
+        builder.pop();
         builder.push("search");
         SEARCH_HISTORY_LIMIT = builder.comment("保存的搜索历史数量，0 表示不保存。")
             .defineInRange("historyLimit", 5, 0, 50);

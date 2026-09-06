@@ -68,6 +68,11 @@ public final class CatalogOverlayContent {
             }
             if (currentY + SECTION_TITLE_HEIGHT > top && currentY < bottom) {
                 graphics.drawString(font, section.title(), x + 5, currentY, section.color(), false);
+                // 带物品的分组标题也可查看提示，命中范围不能越过弹层裁剪区域。
+                if (!section.titleItem().isEmpty() && mouseX >= x + 5 && mouseX < x + 5 + font.width(section.title())
+                    && mouseY >= Math.max(top, currentY) && mouseY < Math.min(bottom, currentY + TEXT_LINE_HEIGHT)) {
+                    hoveredItem = section.titleItem();
+                }
             }
             currentY += SECTION_TITLE_HEIGHT;
             for (int index = 0; index < section.slots().size(); index++) {
@@ -104,7 +109,12 @@ public final class CatalogOverlayContent {
         }
     }
 
-    public record ItemSection(Component title, int color, List<ItemSlot> slots) {
+    public record ItemSection(Component title, int color, List<ItemSlot> slots, ItemStack titleItem) {
+        /** 普通分组不绑定标题物品，维持原有图标槽位交互。 */
+        public ItemSection(Component title, int color, List<ItemSlot> slots) {
+            this(title, color, slots, ItemStack.EMPTY);
+        }
+
         public ItemSection {
             slots = List.copyOf(slots);
         }
