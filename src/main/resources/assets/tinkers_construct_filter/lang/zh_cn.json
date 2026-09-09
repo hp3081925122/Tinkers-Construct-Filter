@@ -45,6 +45,7 @@
   "screen.tinkers_construct_filter.no_attributes": "无属性",
   "screen.tinkers_construct_filter.traits": "词条：",
   "screen.tinkers_construct_filter.material_attribute": "%s：%s",
+  "screen.tinkers_construct_filter.material_description": "材料/部件说明：",
   "filter.tinkers_construct_filter.material_level": "材料等级 %s",
   "filter.tinkers_construct_filter.part_category": "匠魂部件",
   "filter.tinkers_construct_filter.part_tool_category": "对应工具",

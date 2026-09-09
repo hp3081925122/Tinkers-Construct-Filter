@@ -61,6 +61,11 @@ public final class CatalogApi {
 
         String getPartTypeName();
 
+        /** 返回当前材料在该匠魂部件类别下的百科说明，没有对应翻译时返回空字符串。 */
+        default String getMaterialDescription() {
+            return "";
+        }
+
         /** 返回可使用此部件组装的工具物品 ID 与本地化名称。 */
         default Map<String, String> getToolCategories() {
             return Map.of();

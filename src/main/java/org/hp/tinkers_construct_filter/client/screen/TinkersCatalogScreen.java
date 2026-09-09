@@ -1107,6 +1107,14 @@ public final class TinkersCatalogScreen extends Screen {
             CatalogApi.PartView part = parts.get(index);
             String partTitle = part.getPartTypeName().isEmpty() ? part.getPartType() : part.getPartTypeName();
             lines.add(CatalogOverlayContent.TextLine.plain(Component.literal(partTitle), importantPartColor(index)));
+            // 将当前部件类别对应的材料百科说明放在属性前，并按浮窗宽度换行。
+            String materialDescription = part.getMaterialDescription();
+            if (!materialDescription.isBlank()) {
+                lines.add(CatalogOverlayContent.TextLine.plain(Component.translatable("screen.tinkers_construct_filter.material_description"), 0xFFD0D0D0));
+                for (String descriptionLine : wrapOverlayText(List.of(materialDescription), importantInfoWidth() - 12)) {
+                    lines.add(CatalogOverlayContent.TextLine.plain(Component.literal("  " + descriptionLine), 0xFFE0E0E0));
+                }
+            }
             if (part.getAttributeTexts().isEmpty()) {
                 lines.add(CatalogOverlayContent.TextLine.plain(Component.translatable("screen.tinkers_construct_filter.no_attributes"), 0xFFE0E0E0));
             } else {
