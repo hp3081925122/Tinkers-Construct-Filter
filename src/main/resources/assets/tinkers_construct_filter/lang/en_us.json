@@ -45,6 +45,7 @@
   "screen.tinkers_construct_filter.no_attributes": "No attributes",
   "screen.tinkers_construct_filter.traits": "Traits:",
   "screen.tinkers_construct_filter.material_attribute": "%s: %s",
+  "screen.tinkers_construct_filter.material_description": "Material/part description:",
   "filter.tinkers_construct_filter.material_level": "Material level %s",
   "filter.tinkers_construct_filter.part_category": "Tinkers' parts",
   "filter.tinkers_construct_filter.part_tool_category": "Corresponding tools",

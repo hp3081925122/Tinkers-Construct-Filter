@@ -1,12 +1,14 @@
 package org.hp.tinkers_construct_filter.client.catalog;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.common.ForgeI18n;
 import org.hp.tinkers_construct_filter.TinkersConstructFilter;
 import slimeknights.tconstruct.library.materials.IMaterialRegistry;
 import slimeknights.tconstruct.library.materials.MaterialRegistry;
@@ -120,6 +122,7 @@ public final class CatalogDataBuilder {
                     partTraits,
                     CatalogAttributes.collect(stats),
                     CatalogAttributes.collectTexts(stats),
+                    materialDescription(materialId, template.statType()),
                     template.itemId(),
                     template.typeId(),
                     template.typeName(),
@@ -509,6 +512,45 @@ public final class CatalogDataBuilder {
         return translationKey.equals(name) ? id.toString() : name;
     }
 
+    /** 按匠魂手册的版本兼容规则查找材料在当前部件类别下的百科说明。 */
+    private static String materialDescription(MaterialId id, MaterialStatsId statType) {
+        String prefix = "material." + id.getNamespace() + "." + id.getPath().replace('/', '.');
+        String suffix = switch (statType.getPath()) {
+            case "head", "handle", "binding" -> "melee_harvest";
+            case "limb", "grip", "bowstring" -> "ranged";
+            case "arrow_head", "arrow_shaft", "fletching" -> "ammo";
+            case "maille", "shield_core", "cuirass", "plating_helmet", "plating_chestplate", "plating_leggings", "plating_boots", "plating_shield" -> "armor";
+            case "slime" -> "slime";
+            case "shell" -> "shell";
+            case "laces" -> "laces";
+            case "ribcage" -> "ribcage";
+            case "skull" -> "skull";
+            default -> "";
+        };
+
+        List<String> keys = new ArrayList<>();
+        if ("skull".equals(suffix)) {
+            // 头颅部件在两版匠魂中都优先使用独立的头颅百科键。
+            keys.add(prefix + ".skull_encyclopedia");
+        }
+        if (!suffix.isEmpty()) {
+            // 1.20.1 使用 encyclopedia 后缀，1.19.2 使用旧式部件后缀。
+            keys.add(prefix + ".encyclopedia." + suffix);
+            keys.add(prefix + "." + suffix);
+        }
+        keys.add(prefix + ".encyclopedia");
+        for (String key : keys) {
+            if (!I18n.exists(key)) {
+                continue;
+            }
+            String value = ForgeI18n.getPattern(key);
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return "";
+    }
+
     private record PartTemplate(IToolPart part, String itemId, MaterialStatsId statType, String typeId, String typeName,
                                 Map<String, String> toolCategories) {
         // 固化索引，保证所有材质变体安全共享。
@@ -667,11 +709,13 @@ public final class CatalogDataBuilder {
         private final String partId;
         private final String partType;
         private final String partTypeName;
+        private final String materialDescription;
         private final Map<String, String> toolCategories;
         private final Set<String> productionMethods;
 
         private PartEntry(String id, ItemStack displayStack, String materialId, String materialName, int materialLevel, List<TraitData> traits, Map<String, Double> attributeValues,
                           Map<String, String> attributeTexts,
+                          String materialDescription,
                           String partId, String partType, String partTypeName, Map<String, String> toolCategories, Set<String> productionMethods) {
             super(id, displayStack, displayStack.getHoverName().getString(), materialLevel, traits, attributeValues, attributeTexts);
             this.materialId = materialId;
@@ -679,6 +723,7 @@ public final class CatalogDataBuilder {
             this.partId = partId;
             this.partType = partType;
             this.partTypeName = partTypeName;
+            this.materialDescription = materialDescription;
             this.toolCategories = toolCategories;
             this.productionMethods = Set.copyOf(productionMethods);
         }
@@ -714,6 +759,11 @@ public final class CatalogDataBuilder {
             return partTypeName;
         }
 
+        @Override
+        public String getMaterialDescription() {
+            return materialDescription;
+        }
+
         /** 提供快照中已缓存的工具筛选选项。 */
         @Override
         public Map<String, String> getToolCategories() {
@@ -727,7 +777,8 @@ public final class CatalogDataBuilder {
 
         @Override
         public String getSearchText() {
-            return (super.getSearchText() + "\n" + materialId + "\n" + materialName + "\n" + partId + "\n" + partType).toLowerCase(Locale.ROOT);
+            // 说明文字同时纳入搜索索引，允许按百科内容查找部件。
+            return (super.getSearchText() + "\n" + materialId + "\n" + materialName + "\n" + partId + "\n" + partType + "\n" + materialDescription).toLowerCase(Locale.ROOT);
         }
     }
 
