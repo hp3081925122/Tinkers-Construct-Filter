@@ -8,7 +8,7 @@
   "filter.tinkers_construct_filter.trait_other": "其他词条",
   "screen.tinkers_construct_filter.trait_sources": "选择展示词条获取方法",
   "screen.tinkers_construct_filter.trait_recipe_inputs": "匠魂强化 · 消耗材料",
-  "screen.tinkers_construct_filter.catalog": "选择类型",
+  "screen.tinkers_construct_filter.catalog": "匠魂图鉴",
   "button.tinkers_construct_filter.open_catalog": "材料/部件浏览",
   "button.tinkers_construct_filter.materials": "匠魂材料",
   "button.tinkers_construct_filter.parts": "匠魂部件",
@@ -116,5 +116,8 @@
   "sort.tinkers_construct_filter.plating_durability": "护甲板耐久",
   "sort.tinkers_construct_filter.plating_armor": "护甲板护甲值",
   "sort.tinkers_construct_filter.plating_toughness": "护甲板盔甲韧性",
-  "sort.tinkers_construct_filter.plating_knockback_resistance": "护甲板击退抗性"
+  "sort.tinkers_construct_filter.plating_knockback_resistance": "护甲板击退抗性",
+  "button.tinkers_construct_filter.part_attributes": "部件属性",
+  "button.tinkers_construct_filter.trait_sources": "获取途径",
+  "screen.tinkers_construct_filter.no_results": "没有符合条件的条目"
 }

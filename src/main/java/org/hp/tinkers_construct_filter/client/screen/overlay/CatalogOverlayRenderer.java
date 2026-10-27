@@ -51,7 +51,7 @@ public final class CatalogOverlayRenderer {
         int maximumScroll = Math.max(1, totalAmount - visibleAmount);
         int boundedScroll = Math.max(0, Math.min(maximumScroll, scroll));
         int thumbY = y + Math.max(0, trackHeight - thumb) * boundedScroll / maximumScroll;
-        CatalogSkin.draw(graphics, CatalogSkin.SCROLL_TRACK, x + width - 5, y, 2, trackHeight);
-        CatalogSkin.draw(graphics, CatalogSkin.SCROLL_THUMB, x + width - 5, thumbY, 2, thumb);
+        CatalogSkin.draw(graphics, CatalogSkin.SCROLL_TRACK, x + width - 7, y, 4, trackHeight);
+        CatalogSkin.draw(graphics, CatalogSkin.SCROLL_THUMB, x + width - 7, thumbY, 4, thumb);
     }
 }

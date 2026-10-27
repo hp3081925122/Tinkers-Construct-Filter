@@ -8,7 +8,7 @@
   "filter.tinkers_construct_filter.trait_other": "Other Traits",
   "screen.tinkers_construct_filter.trait_sources": "Select trait acquisition sources",
   "screen.tinkers_construct_filter.trait_recipe_inputs": "Modifiers · Required Materials",
-  "screen.tinkers_construct_filter.catalog": "Select Type",
+  "screen.tinkers_construct_filter.catalog": "Tinkers' Catalog",
   "button.tinkers_construct_filter.open_catalog": "Material / Part Browser",
   "button.tinkers_construct_filter.materials": "Materials",
   "button.tinkers_construct_filter.parts": "Parts",
@@ -116,5 +116,8 @@
   "sort.tinkers_construct_filter.plating_durability": "Plating durability",
   "sort.tinkers_construct_filter.plating_armor": "Plating armor",
   "sort.tinkers_construct_filter.plating_toughness": "Plating toughness",
-  "sort.tinkers_construct_filter.plating_knockback_resistance": "Plating knockback resistance"
+  "sort.tinkers_construct_filter.plating_knockback_resistance": "Plating knockback resistance",
+  "button.tinkers_construct_filter.part_attributes": "Part Stats",
+  "button.tinkers_construct_filter.trait_sources": "Sources",
+  "screen.tinkers_construct_filter.no_results": "No matching entries"
 }
