@@ -14,5 +14,6 @@ public final class TinkersConstructFilter {
 
     public TinkersConstructFilter() {
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC);
+        LOGGER.debug("Initialized TinkersConstructFilter client configuration");
     }
 }

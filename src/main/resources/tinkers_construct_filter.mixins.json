@@ -2,12 +2,14 @@
   "required": true,
   "minVersion": "0.8",
   "package": "org.hp.tinkers_construct_filter.mixin",
-  "compatibilityLevel": "JAVA_8",
+  "compatibilityLevel": "JAVA_17",
   "refmap": "tinkers_construct_filter.refmap.json",
   "mixins": [
   ],
   "client": [
-    "client.TinkerStationScreenMixin"
+    "client.BaseTabbedScreenMixin",
+    "client.TinkerStationScreenMixin",
+    "client.ModifierWorktableScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -19,11 +19,13 @@ public final class CatalogApi {
 
         List<String> getTraitNames();
 
-        /** 材料取各部件与默认定义中同词条的最高等级；部件返回自身定义等级，不代表成品工具等级。 */
-        default Map<String, Integer> getTraitLevels() { return Map.of(); }
+        default Map<String, Integer> getTraitLevels() {
+            return Map.of();
+        }
 
-        /** 返回稳定词条标识，不受客户端语言影响。 */
-        default Set<String> getTraitIds() { return getTraitLevels().keySet(); }
+        default Set<String> getTraitIds() {
+            return getTraitLevels().keySet();
+        }
 
         List<String> getTraitDescriptions();
 
@@ -33,7 +35,6 @@ public final class CatalogApi {
     }
 
     public interface MaterialView extends EntryView {
-        /** 返回旗下部件制作方式的并集，不代表所有部件都支持这些方式。 */
         default Set<String> getProductionMethods() {
             return Set.of("unknown");
         }
@@ -43,10 +44,25 @@ public final class CatalogApi {
         int getAvailablePartCount();
 
         ItemStack getMaterialDisplayItem();
+
+        default List<ItemStack> getMaterialItems() {
+            return List.of();
+        }
+
+        default List<String> getCastingFluids() {
+            return List.of();
+        }
+
+        default String getGeneralDescription() {
+            return "";
+        }
+
+        default List<PartView> getExtraStatCards() {
+            return List.of();
+        }
     }
 
     public interface PartView extends EntryView {
-        /** 返回实际配方识别出的制作方式，未识别时返回 unknown。 */
         default Set<String> getProductionMethods() {
             return Set.of("unknown");
         }
@@ -61,12 +77,10 @@ public final class CatalogApi {
 
         String getPartTypeName();
 
-        /** 返回当前材料在该匠魂部件类别下的百科说明，没有对应翻译时返回空字符串。 */
         default String getMaterialDescription() {
             return "";
         }
 
-        /** 返回可使用此部件组装的工具物品 ID 与本地化名称。 */
         default Map<String, String> getToolCategories() {
             return Map.of();
         }
@@ -75,20 +89,22 @@ public final class CatalogApi {
     }
 
     public interface ModifierView extends EntryView {
-        /** 返回脚本归类覆盖后的效果分类标识，不修改词条实际效果。 */
         default List<String> getEffectCategories() {
             return CatalogExtensions.traitCategories(getId()).stream().map(TraitCategory::id).toList();
         }
-        /** 返回构建快照时按词条 ID 反向关联的材料和部件。 */
-        default List<CatalogEntry> getSourceMaterials() { return List.of(); }
 
-        /** 部件保留材料化物品，供悬浮窗显示准确名称及物品信息。 */
-        default List<CatalogEntry> getSourceParts() { return List.of(); }
+        default List<CatalogEntry> getSourceMaterials() {
+            return List.of();
+        }
 
-        /** 返回工具定义本身提供当前词条的工具，不包含材料或额外强化来源。 */
-        default List<ItemStack> getSourceTools() { return List.of(); }
+        default List<CatalogEntry> getSourceParts() {
+            return List.of();
+        }
 
-        /** 区分可通过配方添加的强化与仅作为特性存在的词条。 */
+        default List<ItemStack> getSourceTools() {
+            return List.of();
+        }
+
         boolean hasModifierRecipe();
 
         Map<String, String> getSlotCategories();
@@ -100,13 +116,31 @@ public final class CatalogApi {
         List<ItemStack> getRecipeTools();
 
         List<ModifierRecipeView> getRecipeVariants();
+
+        default String getSlotRequirementSummary() {
+            return "";
+        }
+
+        default String getLevelSummary() {
+            return "";
+        }
+
+        default int getMaxLevel() {
+            return 0;
+        }
     }
 
-    public record ModifierRecipeView(List<List<ItemStack>> inputSlots) {
+    public record ModifierRecipeView(List<List<ItemStack>> inputSlots, String slotSummary, String levelSummary) {
+        public ModifierRecipeView(List<List<ItemStack>> inputSlots) {
+            this(inputSlots, "", "");
+        }
+
         public ModifierRecipeView {
             inputSlots = inputSlots.stream()
                 .map(slot -> slot.stream().map(ItemStack::copy).toList())
                 .toList();
+            slotSummary = slotSummary == null ? "" : slotSummary;
+            levelSummary = levelSummary == null ? "" : levelSummary;
         }
 
         @Override
@@ -137,25 +171,21 @@ public final class CatalogApi {
         Object getValue(PartView view);
     }
 
-    /** 强化和词条共用只读数据形状，通过不同注册入口指定目标页面。 */
     @FunctionalInterface
     public interface ModifierFilter {
         boolean test(ModifierView view);
     }
 
-    /** 每次刷新每条目只求值一次，不向脚本暴露排序比较器。 */
     @FunctionalInterface
     public interface ModifierSortValue {
         Object getValue(ModifierView view);
     }
 
-    /** 统一扩展存储的内部回调，由各页面的类型化入口适配。 */
     @FunctionalInterface
     public interface EntryFilter {
         boolean test(EntryView view);
     }
 
-    /** 统一扩展存储的排序值回调。 */
     @FunctionalInterface
     public interface EntrySortValue {
         Object getValue(EntryView view);

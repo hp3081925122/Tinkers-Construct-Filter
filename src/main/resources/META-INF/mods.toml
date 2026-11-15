@@ -1,7 +1,7 @@
 modLoader = "javafml"
 loaderVersion = "${loader_version_range}"
 license = "${mod_license}"
-displayTest = "MATCH_VERSION"
+displayTest = "IGNORE_SERVER_VERSION"
 
 [[mods]]
 modId = "${mod_id}"
@@ -27,13 +27,6 @@ side = "BOTH"
 [[dependencies."${mod_id}"]]
 modId = "tconstruct"
 mandatory = true
-versionRange = "[3.11.2.166,)"
+versionRange = "[0.0.1,)"
 ordering = "AFTER"
 side = "BOTH"
-
-[[dependencies."${mod_id}"]]
-modId = "kubejs"
-mandatory = false
-versionRange = "[2001.6.5-build.16,)"
-ordering = "AFTER"
-side = "CLIENT"

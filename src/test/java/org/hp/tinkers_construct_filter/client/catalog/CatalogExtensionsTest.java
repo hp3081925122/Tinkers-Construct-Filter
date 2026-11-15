@@ -135,6 +135,26 @@ public final class CatalogExtensionsTest {
             check(CatalogExtensions.sorts(page).size() == 1, "Rhino sample sorts " + page);
         }
         check(CatalogExtensions.traitCategories("tconstruct:sharpness").equals(List.of(TraitCategory.ATTACK)), "Rhino array conversion");
+
+        TraitCategoryTest.main(new String[0]);
+        check(CatalogAttributes.format("handle_durability", 0.15).equals("+15%"), "handle_durability positive percent");
+        check(CatalogAttributes.format("handle_durability", -0.20).equals("-20%"), "handle_durability negative percent");
+        check(CatalogAttributes.format("handle_durability", 0.0).equals("+0%"), "handle_durability zero percent");
+        check(CatalogAttributes.format("grip_durability", -0.10).equals("-10%"), "grip_durability negative percent");
+        check(CatalogAttributes.format("limb_draw_speed", 0.10).equals("+0.10"), "limb_draw_speed signed bonus");
+        check(CatalogAttributes.format("head_durability", 350.0).equals("350"), "head_durability integer");
+        check(CatalogAttributes.format("skull_durability", 225.0).equals("225"), "skull_durability integer");
+        java.util.LinkedHashMap<String, Double> mergedVals = new java.util.LinkedHashMap<>();
+        java.util.LinkedHashMap<String, String> mergedTxts = new java.util.LinkedHashMap<>();
+        CatalogAttributes.mergeIntoMaterial(mergedVals, mergedTxts,
+            Map.of("plating_armor", 7.0, "plating_durability", 480.0),
+            Map.of("plating_armor", "7", "plating_durability", "480"));
+        CatalogAttributes.mergeIntoMaterial(mergedVals, mergedTxts,
+            Map.of("plating_durability", 540.0),
+            Map.of("plating_durability", "540"));
+        check(mergedVals.get("plating_armor").equals(7.0) && mergedTxts.get("plating_armor").equals("7"), "shield does not overwrite chestplate armor");
+        check(mergedVals.get("plating_durability").equals(540.0) && mergedTxts.get("plating_durability").equals("540"), "peak plating durability retained");
+
         System.out.println("Catalog extension regression checks passed: " + checks);
     }
 
