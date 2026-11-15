@@ -2,131 +2,183 @@ package org.hp.tinkers_construct_filter.client.screen.overlay;
 
 import org.hp.tinkers_construct_filter.client.catalog.CatalogEntry;
 
-/** 统一管理图鉴界面的弹层状态、命中范围、锁定状态和滚动位置。 */
 public final class CatalogOverlayController {
-    public enum Type {
+    public enum ModalType {
         NONE,
         HISTORY,
         FILTER,
         SORT,
-        IMPORTANT,
-        MATERIAL_INFO,
-        MODIFIER_INFO
+        IMPORTANT
     }
 
-    private Type type = Type.NONE;
-    private CatalogEntry target;
-    private boolean locked;
-    private int scroll;
-    private int contentHeight;
-    private int viewportHeight;
-    private Bounds bounds = Bounds.EMPTY;
+    private ModalType modalType = ModalType.NONE;
+    private int modalScroll;
+    private int modalContentHeight;
+    private int modalViewportHeight;
+    private Bounds modalBounds = Bounds.EMPTY;
 
-    /** 打开一个没有目标条目的选择弹层，并清理旧的目标和锁定状态。 */
-    public void open(Type type) {
-        this.type = type;
-        this.target = null;
-        this.locked = false;
-        this.scroll = 0;
-        this.contentHeight = 0;
-        this.viewportHeight = 0;
-        this.bounds = Bounds.EMPTY;
+    private CatalogEntry inspectedEntry;
+    private boolean detailPinned;
+    private int detailScroll;
+    private int detailContentHeight;
+    private int detailViewportHeight;
+    private Bounds detailBounds = Bounds.EMPTY;
+    private Bounds pinButtonBounds = Bounds.EMPTY;
+
+    public void openModal(ModalType type) {
+        this.modalType = type;
+        this.modalScroll = 0;
+        this.modalContentHeight = 0;
+        this.modalViewportHeight = 0;
+        this.modalBounds = Bounds.EMPTY;
     }
 
-    /** 选择一个信息弹层目标；目标发生变化时只重置一次滚动位置。 */
-    public void showDetail(Type type, CatalogEntry target) {
-        if (this.type != type || this.target != target) {
-            this.scroll = 0;
-            this.locked = false;
-            this.contentHeight = 0;
-            this.viewportHeight = 0;
-        }
-        this.type = type;
-        this.target = target;
-        this.bounds = Bounds.EMPTY;
+    public void closeModal() {
+        this.modalType = ModalType.NONE;
+        this.modalScroll = 0;
+        this.modalContentHeight = 0;
+        this.modalViewportHeight = 0;
+        this.modalBounds = Bounds.EMPTY;
     }
 
-    /** 关闭当前弹层并清理所有交互状态。 */
-    public void clear() {
-        type = Type.NONE;
-        target = null;
-        locked = false;
-        scroll = 0;
-        contentHeight = 0;
-        viewportHeight = 0;
-        bounds = Bounds.EMPTY;
-    }
-
-    public Type type() {
-        return type;
-    }
-
-    public CatalogEntry target() {
-        return target;
-    }
-
-    public boolean isOpen() {
-        return type != Type.NONE;
-    }
-
-    public boolean isOpen(Type expected) {
-        return type == expected;
+    public ModalType modalType() {
+        return modalType;
     }
 
     public boolean isModalOpen() {
-        return type == Type.HISTORY || type == Type.FILTER || type == Type.SORT || type == Type.IMPORTANT;
+        return modalType != ModalType.NONE;
     }
 
-    public boolean isLocked() {
-        return locked;
+    public boolean isModalOpen(ModalType expected) {
+        return modalType == expected;
     }
 
-    public void lock() {
-        locked = true;
+    public int modalScroll() {
+        return modalScroll;
     }
 
-    public int scroll() {
-        return scroll;
+    public void setModalScroll(int scroll, int maximum) {
+        this.modalScroll = clamp(scroll, 0, Math.max(0, maximum));
     }
 
-    public void setScroll(int scroll, int maximum) {
-        this.scroll = clamp(scroll, 0, Math.max(0, maximum));
+    public void scrollModalBy(int amount) {
+        setModalScroll(modalScroll + amount, Math.max(0, modalContentHeight - modalViewportHeight));
     }
 
-    public void scrollBy(int amount, int maximum) {
-        setScroll(scroll + amount, maximum);
+    public void setModalMetrics(int contentHeight, int viewportHeight) {
+        this.modalContentHeight = Math.max(0, contentHeight);
+        this.modalViewportHeight = Math.max(0, viewportHeight);
+        setModalScroll(modalScroll, Math.max(0, this.modalContentHeight - this.modalViewportHeight));
     }
 
-    public void scrollBy(int amount) {
-        setScroll(scroll + amount, maximumScroll());
+    public void setModalBounds(int x, int y, int width, int height) {
+        this.modalBounds = new Bounds(x, y, width, height);
     }
 
-    public int contentHeight() {
-        return contentHeight;
+    public boolean isOverModal(double mouseX, double mouseY) {
+        return isModalOpen() && modalBounds.contains(mouseX, mouseY);
     }
 
-    public int viewportHeight() {
-        return viewportHeight;
+    public void inspect(CatalogEntry entry, boolean pin) {
+        if (entry == null) {
+            clearDetail();
+            return;
+        }
+        if (this.inspectedEntry != entry) {
+            this.detailScroll = 0;
+            this.detailContentHeight = 0;
+            this.detailViewportHeight = 0;
+        }
+        this.inspectedEntry = entry;
+        if (pin) {
+            this.detailPinned = true;
+        }
     }
 
-    public int maximumScroll() {
-        return Math.max(0, contentHeight - viewportHeight);
+    public void togglePin() {
+        if (this.inspectedEntry != null) {
+            this.detailPinned = !this.detailPinned;
+        }
     }
 
-    /** 更新当前弹层内容尺寸，并将滚动位置限制在新的内容范围内。 */
-    public void setContentMetrics(int contentHeight, int viewportHeight) {
-        this.contentHeight = Math.max(0, contentHeight);
-        this.viewportHeight = Math.max(0, viewportHeight);
-        setScroll(scroll, maximumScroll());
+    public void setDetailPinned(boolean pinned) {
+        this.detailPinned = pinned && this.inspectedEntry != null;
     }
 
-    /** 更新当前弹层矩形，后续命中测试和鼠标事件都使用同一份矩形。 */
-    public void setBounds(int x, int y, int width, int height) {
-        bounds = new Bounds(x, y, width, height);
+    public void clearDetail() {
+        this.inspectedEntry = null;
+        this.detailPinned = false;
+        this.detailScroll = 0;
+        this.detailContentHeight = 0;
+        this.detailViewportHeight = 0;
+        this.detailBounds = Bounds.EMPTY;
+        this.pinButtonBounds = Bounds.EMPTY;
     }
 
-    public boolean isOver(double mouseX, double mouseY) {
-        return isOpen() && bounds.contains(mouseX, mouseY);
+    public CatalogEntry inspectedEntry() {
+        return inspectedEntry;
+    }
+
+    public boolean hasDetail() {
+        return inspectedEntry != null;
+    }
+
+    public boolean isDetailPinned() {
+        return detailPinned && inspectedEntry != null;
+    }
+
+    public int detailScroll() {
+        return detailScroll;
+    }
+
+    public int detailMaximumScroll() {
+        return Math.max(0, detailContentHeight - detailViewportHeight);
+    }
+
+    public void setDetailScroll(int scroll) {
+        this.detailScroll = clamp(scroll, 0, detailMaximumScroll());
+    }
+
+    public void scrollDetailBy(int amount) {
+        setDetailScroll(detailScroll + amount);
+    }
+
+    public int detailContentHeight() {
+        return detailContentHeight;
+    }
+
+    public int detailViewportHeight() {
+        return detailViewportHeight;
+    }
+
+    public void setDetailMetrics(int contentHeight, int viewportHeight) {
+        this.detailContentHeight = Math.max(0, contentHeight);
+        this.detailViewportHeight = Math.max(0, viewportHeight);
+        setDetailScroll(detailScroll);
+    }
+
+    public void setDetailBounds(int x, int y, int width, int height) {
+        this.detailBounds = new Bounds(x, y, width, height);
+    }
+
+    public int detailX() {
+        return detailBounds.x();
+    }
+
+    public int detailY() {
+        return detailBounds.y();
+    }
+
+    public void setPinButtonBounds(int x, int y, int width, int height) {
+        this.pinButtonBounds = new Bounds(x, y, width, height);
+    }
+
+    public boolean isOverDetail(double mouseX, double mouseY) {
+        return hasDetail() && detailBounds.contains(mouseX, mouseY);
+    }
+
+    public boolean isOverPinButton(double mouseX, double mouseY) {
+        return hasDetail() && pinButtonBounds.contains(mouseX, mouseY);
     }
 
     private static int clamp(int value, int minimum, int maximum) {
@@ -137,7 +189,7 @@ public final class CatalogOverlayController {
         private static final Bounds EMPTY = new Bounds(0, 0, 0, 0);
 
         private boolean contains(double mouseX, double mouseY) {
-            return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
+            return width > 0 && height > 0 && mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
         }
     }
 }

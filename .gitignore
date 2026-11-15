@@ -20,3 +20,8 @@ hs_err_pid*
 # Common working directory
 run
 bin/main/
+
+# Migration and process docs
+迁移文档.md
+*迁移文档*.md
+docs/迁移/

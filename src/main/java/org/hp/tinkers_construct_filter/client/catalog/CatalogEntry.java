@@ -11,8 +11,13 @@ public interface CatalogEntry extends CatalogApi.EntryView {
 
     List<TraitTooltip> getTraitTooltips();
 
-    record TraitTooltip(String name, List<String> descriptions) {
+    record TraitTooltip(String id, String name, List<String> descriptions) {
+        public TraitTooltip(String name, List<String> descriptions) {
+            this("", name, descriptions);
+        }
+
         public TraitTooltip {
+            id = id == null ? "" : id;
             descriptions = List.copyOf(descriptions);
         }
     }
